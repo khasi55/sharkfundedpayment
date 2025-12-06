@@ -407,6 +407,43 @@ export default function PaymentPageContent() {
         };
     }, [sessionId]);
 
+    // [NEW] Polling fallback for 'review_pending' state
+    // In case Realtime is flaky or behind a firewall, we poll every 10 seconds
+    useEffect(() => {
+        let pollTimer: NodeJS.Timeout;
+
+        if (state.step === 'review_pending' && sessionId) {
+            const pollFn = async () => {
+                try {
+                    const { data, error } = await supabase
+                        .from('transactions')
+                        .select('status, order_id')
+                        .eq('session_id', sessionId) // Always query by stable session ID
+                        .single();
+
+                    if (data) {
+                        if (data.status === 'verified') {
+                            if (data.order_id) setOfficialOrderId(data.order_id);
+                            setState(prev => ({ ...prev, step: 'verified' }));
+                        } else if (data.status === 'rejected') {
+                            setState(prev => ({ ...prev, step: 'failed', error: 'Payment verification rejected by admin.' }));
+                        }
+                    }
+                } catch (err) {
+                    console.error('Polling error:', err);
+                }
+            };
+
+            // Poll immediately then every 10s
+            pollFn();
+            pollTimer = setInterval(pollFn, 10000);
+        }
+
+        return () => {
+            if (pollTimer) clearInterval(pollTimer);
+        };
+    }, [state.step, sessionId]);
+
     const checkStatus = async () => {
         // If we have an official order ID, check by that.
         // If not, check by session_id or UTR.
@@ -434,6 +471,7 @@ export default function PaymentPageContent() {
 
             if (data.status === 'verified') {
                 if (data.order_id) setOfficialOrderId(data.order_id);
+                // Also update the state orderId if needed so it propagates immediately
                 setState(prev => ({ ...prev, step: 'verified' }));
             } else if (data.status === 'rejected') {
                 setState(prev => ({ ...prev, step: 'failed', error: 'Payment verification rejected by admin.' }));
@@ -697,7 +735,7 @@ export default function PaymentPageContent() {
                                     step={state.step}
                                     amount={state.amount}
                                     orderId={officialOrderId || sessionId}
-                                    callbackUrl={searchParams.get('callback_url')}
+                                    callbackUrl={callbackUrl || searchParams.get('callback_url')}
                                 />
                             </div>
                         ) : (state.step === 'manual_upload' && (

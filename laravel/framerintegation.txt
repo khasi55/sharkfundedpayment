@@ -1,0 +1,89 @@
+Payment Gateway Integration Guide (Framer & Laravel)
+This gateway is Universal. It works with any website (Framer, WordPress, Shopify, Laravel, React) because it uses standard URL Redirection.
+
+How it Works
+Redirect: User clicks "Pay" on your site -> You send them to our Gateway URL with details.
+Payment: User pays and verifies on our secure page.
+Callback: We send the user back to your site with the status.
+1. Laravel Implementation (Backend)
+Step A: Redirect to Payment
+In your controller (e.g., PaymentController.php), create the payment link.
+
+public function initiatePayment(Request $request)
+{
+    // 1. Transaction Details
+    $orderId = "ORD-" . uniqid(); // Generate your internal order ID
+    $amount = 5000;
+    $name = $request->user()->name;
+    $email = $request->user()->email;
+    
+    // 2. Gateway Configuration
+    $gatewayUrl = "https://payment.sharkfunded.com/secure-checkout/" . $orderId;
+    $callbackUrl = route('payment.callback'); // Your Laravel route for return
+    
+    // 3. Build Query
+    $query = http_build_query([
+        'amount' => $amount,
+        'name' => $name,
+        'email' => $email,
+        'callback_url' => $callbackUrl
+    ]);
+    
+    // 4. Redirect User
+    return redirect($gatewayUrl . '?' . $query);
+}
+Step B: Handle Callback
+Create a route to handle the return traffic.
+
+public function handleCallback(Request $request)
+{
+    $status = $request->query('status'); // 'success' or 'pending'
+    $orderId = $request->query('orderId');
+    $utr = $request->query('utr');
+    
+    if ($status === 'success') {
+        // 1. Update your database
+        Order::where('order_id', $orderId)->update([
+            'status' => 'paid', 
+            'utr' => $utr
+        ]);
+        
+        return view('payment.success', ['orderId' => $orderId]);
+    }
+    
+    return view('payment.failed');
+}
+2. Framer Implementation (Frontend)
+In Framer, you usually link a button. You can construct this link dynamically or use a code override.
+
+Option A: Smart Component (Code Override)
+Apply this to your "Pay Now" button in Framer.
+
+import type { ComponentType } from "react"
+export function withPaymentLink(Component): ComponentType {
+    return (props) => {
+        const handlePay = () => {
+            // Your Gateway Details
+            const baseUrl = "https://payment.sharkfunded.com/secure-checkout"
+            const orderId = "ORD-" + Math.floor(Math.random() * 1000000)
+            
+            // Customer Details (Hardcoded or from Inputs)
+            const params = new URLSearchParams({
+                amount: "5000",
+                name: "Framer User",
+                email: "user@framer.com",
+                callback_url: "https://your-framer-site.com/success"
+            })
+            
+            // Redirect
+            window.location.href = `${baseUrl}/${orderId}?${params.toString()}`
+        }
+        return <Component {...props} onClick={handlePay} />
+    }
+}
+Option B: Simple Link (No Code)
+If you can't use code, just set the Link property of your button to:
+
+https://payment.sharkfunded.com/secure-checkout/GENERATE_UUID?amount=5000&name=Client&email=client@email.com&callback_url=https://yoursite.com/thanks
+
+(Note: Without code, you can't generate unique Order IDs dynamically, so Code Override or connecting to your Laravel API is better).

@@ -183,7 +183,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                             <span className="font-mono text-xs font-bold text-slate-700">ID</span>
                         </div>
                         <div className="flex-1 text-left">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Order ID</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Ref ID / Order ID</p>
                             <p className="text-sm font-mono font-bold text-slate-900">{currentOrderId || 'Pending...'}</p>
                         </div>
                     </div>
