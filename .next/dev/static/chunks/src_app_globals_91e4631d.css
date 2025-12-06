@@ -1267,6 +1267,11 @@
     border-top-width: 1px;
   }
 
+  .border-t-2 {
+    border-top-style: var(--tw-border-style);
+    border-top-width: 2px;
+  }
+
   .border-r {
     border-right-style: var(--tw-border-style);
     border-right-width: 1px;
@@ -1275,6 +1280,11 @@
   .border-b {
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
+  }
+
+  .border-b-2 {
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 2px;
   }
 
   .border-l {
@@ -1321,6 +1331,10 @@
 
   .border-indigo-200 {
     border-color: var(--color-indigo-200);
+  }
+
+  .border-indigo-600 {
+    border-color: var(--color-indigo-600);
   }
 
   .border-rose-100 {
