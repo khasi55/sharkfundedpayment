@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-    console.error('Supabase credentials missing');
-}
-
-// Use service role key for admin operations (falls back to anon if missing)
-const supabase = createClient(supabaseUrl, supabaseServiceKey || 'missing-key');
 
 export async function POST(request: Request) {
     try {

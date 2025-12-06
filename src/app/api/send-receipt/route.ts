@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// Use anon key as we only need to read (assuming public read access or user's own data)
-// If RLS prevents reading other's transactions, this might need service role, 
-// but usually users can read their own transaction if authenticated, or public read is enabled for verification.
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function POST(request: Request) {
     try {
