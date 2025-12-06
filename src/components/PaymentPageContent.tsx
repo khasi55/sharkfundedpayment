@@ -217,23 +217,47 @@ export default function PaymentPageContent() {
 
                 if (response.data.success) {
                     // Success! Record in Supabase
-                    // The DB Trigger will automatically generate the 'order_id' (SF-2025-X) because status is verified
+                    let finalData;
+                    let dbError;
 
-                    const { data: insertedData, error: dbError } = await supabase
-                        .from('transactions')
-                        .insert([
-                            {
+                    // 1. Try to UPDATE existing transaction first
+                    if (sessionId) {
+                        const { data: updatedData, error: updateError } = await supabase
+                            .from('transactions')
+                            .update({
                                 amount: state.amount,
                                 utr: state.utr,
-                                session_id: sessionId, // Store UUID in session_id
                                 status: 'verified',
                                 customer_details: { name: state.name, email: state.email },
-                            },
-                        ])
-                        .select()
-                        .single();
+                            })
+                            .or(`id.eq.${sessionId},session_id.eq.${sessionId}`)
+                            .select()
+                            .maybeSingle();
 
-                    let finalData = insertedData;
+                        if (updatedData) {
+                            finalData = updatedData;
+                        }
+                    }
+
+                    // 2. If no existing transaction updated, INSERT new one
+                    if (!finalData) {
+                        const { data: insertedData, error: insertError } = await supabase
+                            .from('transactions')
+                            .insert([
+                                {
+                                    amount: state.amount,
+                                    utr: state.utr,
+                                    session_id: sessionId, // Store UUID in session_id
+                                    status: 'verified',
+                                    customer_details: { name: state.name, email: state.email },
+                                },
+                            ])
+                            .select()
+                            .single();
+
+                        finalData = insertedData;
+                        dbError = insertError;
+                    }
 
                     if (dbError) {
                         console.error('Supabase error:', dbError);
@@ -301,22 +325,45 @@ export default function PaymentPageContent() {
         if (!file) return;
 
         setUploading(true);
+        setUploading(true);
         try {
-            // 1. Insert transaction FIRST to get the Order ID (if generated) or at least the Transaction ID
-            const { data: insertedData, error: insertError } = await supabase
-                .from('transactions')
-                .insert({
-                    utr: state.utr || `MANUAL-${Date.now()}`, // Fallback if no UTR entered
-                    amount: state.amount,
-                    session_id: sessionId, // Store UUID in session_id
-                    status: 'pending_manual_verification',
-                    customer_details: { name: state.name, email: state.email }
-                    // screenshot_url is initially null
-                })
-                .select()
-                .single();
+            let insertedData;
 
-            if (insertError) throw insertError;
+            // 1. Try Update Existing
+            if (sessionId) {
+                const { data: updatedData } = await supabase
+                    .from('transactions')
+                    .update({
+                        utr: state.utr || `MANUAL-${Date.now()}`,
+                        amount: state.amount,
+                        status: 'pending_manual_verification',
+                        customer_details: { name: state.name, email: state.email }
+                    })
+                    .or(`id.eq.${sessionId},session_id.eq.${sessionId}`)
+                    .select()
+                    .maybeSingle(); // Use maybeSingle to avoid 406 if no rows
+
+                if (updatedData) insertedData = updatedData;
+            }
+
+            // 2. Insert if update not successful
+            if (!insertedData) {
+                const { data, error: insertError } = await supabase
+                    .from('transactions')
+                    .insert({
+                        utr: state.utr || `MANUAL-${Date.now()}`, // Fallback if no UTR entered
+                        amount: state.amount,
+                        session_id: sessionId, // Store UUID in session_id
+                        status: 'pending_manual_verification',
+                        customer_details: { name: state.name, email: state.email }
+                        // screenshot_url is initially null
+                    })
+                    .select()
+                    .single();
+
+                if (insertError) throw insertError;
+                insertedData = data;
+            }
 
             // 2. Determine filename using Order ID (preferred) or Session ID
             const fileExt = file.name.split('.').pop();
@@ -378,7 +425,7 @@ export default function PaymentPageContent() {
                     event: 'UPDATE',
                     schema: 'public',
                     table: 'transactions',
-                    filter: `session_id=eq.${sessionId}` // Listen specifically for this session UUID
+                    filter: `id=eq.${sessionId}` // Listen specifically for this PK ID
                 },
                 (payload) => {
 
@@ -418,7 +465,7 @@ export default function PaymentPageContent() {
                     const { data, error } = await supabase
                         .from('transactions')
                         .select('status, order_id')
-                        .eq('session_id', sessionId) // Always query by stable session ID
+                        .or(`id.eq.${sessionId},session_id.eq.${sessionId}`) // Query by ID or Session ID
                         .single();
 
                     if (data) {
@@ -736,6 +783,10 @@ export default function PaymentPageContent() {
                                     amount={state.amount}
                                     orderId={officialOrderId || sessionId}
                                     callbackUrl={callbackUrl || searchParams.get('callback_url')}
+                                    generateInvoice={generateInvoice}
+                                    state={state}
+                                    setState={setState}
+                                    checkStatus={checkStatus}
                                 />
                             </div>
                         ) : (state.step === 'manual_upload' && (
