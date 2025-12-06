@@ -351,7 +351,7 @@ export default function PaymentPageContent() {
                 setOfficialOrderId(insertedData.order_id);
             }
 
-            setState(prev => ({ ...prev, step: 'success', screenshot_url: publicUrl }));
+            setState(prev => ({ ...prev, step: 'review_pending', screenshot_url: publicUrl }));
         } catch (error: any) {
             console.error('Error uploading:', error);
             if (error.code === '23505' || error.message?.includes('duplicate key')) {
@@ -658,15 +658,7 @@ export default function PaymentPageContent() {
                 {/* Right Content (Stripe Style) */}
                 <div className="flex-1 p-8 md:p-12 flex flex-col justify-center relative">
 
-                    {/* Back Button (Only show if NOT via direct link) */}
-                    {state.step === 'payment' && !queryAmount && (
-                        <button
-                            onClick={() => setState(prev => ({ ...prev, step: 'details' }))}
-                            className="absolute top-8 left-8 text-slate-400 hover:text-slate-700 transition-colors flex items-center gap-1 text-sm font-medium"
-                        >
-                            <ArrowLeft size={16} /> Back
-                        </button>
-                    )}
+
 
                     <div className="max-w-md mx-auto w-full">
 
@@ -699,7 +691,7 @@ export default function PaymentPageContent() {
                             />
                         )}
 
-                        {state.step === 'success' || state.step === 'verified' ? (
+                        {state.step === 'success' || state.step === 'verified' || state.step === 'review_pending' ? (
                             <div className="md:col-span-12 lg:col-span-8 bg-white p-8 md:p-12 flex items-center justify-center min-h-[600px]">
                                 <PaymentStatus
                                     step={state.step}
