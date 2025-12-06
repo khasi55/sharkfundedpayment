@@ -21,10 +21,16 @@ export interface PaymentManualUploadProps {
 }
 
 export interface PaymentStatusProps {
-    state: PaymentState;
-    setState: React.Dispatch<React.SetStateAction<PaymentState>>;
-    officialOrderId: string;
-    checkStatus: () => Promise<void>;
-    generateInvoice: (details: any) => void;
+    // New simplified props
+    step?: 'details' | 'payment' | 'verifying' | 'success' | 'failed' | 'expired' | 'manual_upload' | 'verified' | 'review_pending';
+    amount?: string;
+    orderId?: string;
     callbackUrl?: string | null;
+
+    // Legacy/Full props
+    state?: PaymentState;
+    setState?: React.Dispatch<React.SetStateAction<PaymentState>>;
+    officialOrderId?: string;
+    checkStatus?: () => Promise<void>;
+    generateInvoice?: (details: any) => void;
 }

@@ -1077,22 +1077,22 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$re
 var _s = __turbopack_context__.k.signature();
 ;
 ;
-function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice }) {
+function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId }) {
     _s();
     const [autoRedirectTimer, setAutoRedirectTimer] = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useState(5);
-    // If "state" prop exists (legacy usage), use it. otherwise use direct props.
-    // Actually, let's normalize.
+    // Normalize props
     const currentStep = step || state?.step;
-    const currentAmount = amount || state?.amount;
-    const currentOrderId = orderId || state?.orderId;
-    // ... logic continues ...
+    const currentAmount = amount || state?.amount || '0';
+    // officialOrderId is passed as prop usually, or we might use orderId prop
+    const currentOrderId = officialOrderId || orderId || 'N/A';
     const handleReturnToMerchant = __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useCallback({
         "PaymentStatus.useCallback[handleReturnToMerchant]": ()=>{
             if (callbackUrl) {
                 const url = new URL(callbackUrl);
                 url.searchParams.set('status', currentStep === 'verified' ? 'success' : 'pending');
                 url.searchParams.set('orderId', currentOrderId);
-                // url.searchParams.set('utr', state?.utr || ''); // logic needs state for UTR if available
+                // utr might be in state
+                if (state?.utr) url.searchParams.set('utr', state.utr);
                 window.location.href = url.toString();
             } else {
                 window.location.reload();
@@ -1101,7 +1101,8 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
     }["PaymentStatus.useCallback[handleReturnToMerchant]"], [
         callbackUrl,
         currentStep,
-        currentOrderId
+        currentOrderId,
+        state
     ]);
     // Auto-redirect effect
     __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].useEffect({
@@ -1141,18 +1142,18 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                         size: 32
                     }, void 0, false, {
                         fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                        lineNumber: 62,
+                        lineNumber: 50,
                         columnNumber: 51
                     }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$clock$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__Clock$3e$__["Clock"], {
                         size: 32
                     }, void 0, false, {
                         fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                        lineNumber: 62,
+                        lineNumber: 50,
                         columnNumber: 80
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 61,
+                    lineNumber: 49,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1162,7 +1163,7 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: currentStep === 'verified' ? 'Payment Verified' : 'Payment Successful'
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 65,
+                            lineNumber: 53,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1170,13 +1171,13 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: currentStep === 'verified' ? 'Your transaction has been confirmed.' : 'Thank you for your payment.'
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 68,
+                            lineNumber: 56,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 64,
+                    lineNumber: 52,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1190,7 +1191,7 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     children: "Amount Paid"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 75,
+                                    lineNumber: 63,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1201,13 +1202,13 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 76,
+                                    lineNumber: 64,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 74,
+                            lineNumber: 62,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1218,52 +1219,65 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     children: "Order ID"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 79,
+                                    lineNumber: 67,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                     className: "font-mono font-bold text-slate-900 break-all",
-                                    children: currentOrderId || 'Generating...'
+                                    children: currentOrderId
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 80,
+                                    lineNumber: 68,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 78,
+                            lineNumber: 66,
                             columnNumber: 21
+                        }, this),
+                        state?.utr && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "flex justify-between",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "text-slate-500",
+                                    children: "Reference/UTR"
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
+                                    lineNumber: 72,
+                                    columnNumber: 29
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+                                    className: "font-mono font-bold text-slate-900",
+                                    children: state.utr
+                                }, void 0, false, {
+                                    fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
+                                    lineNumber: 73,
+                                    columnNumber: 29
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
+                            lineNumber: 71,
+                            columnNumber: 25
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 73,
+                    lineNumber: 61,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "space-y-3 pt-4",
                     children: [
-                        callbackUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                            className: "text-xs text-slate-400 text-center animate-pulse",
-                            children: [
-                                "Redirecting in ",
-                                autoRedirectTimer,
-                                "s..."
-                            ]
-                        }, void 0, true, {
-                            fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 86,
-                            columnNumber: 25
-                        }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
-                            onClick: handleReturnToMerchant,
-                            className: "w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20",
-                            children: callbackUrl ? 'Return to Merchant Now' : 'Done'
+                        state?.screenshot_url && currentStep !== 'verified' && checkStatus && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: checkStatus,
+                            className: "w-full bg-white text-slate-700 border border-slate-200 py-3 rounded-lg font-bold text-sm hover:bg-slate-50 transition-all",
+                            children: "Check Status"
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 90,
-                            columnNumber: 21
+                            lineNumber: 81,
+                            columnNumber: 25
                         }, this),
                         generateInvoice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                             onClick: ()=>generateInvoice({
@@ -1280,30 +1294,51 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 110,
+                                    lineNumber: 102,
                                     columnNumber: 29
                                 }, this),
                                 "Download Invoice"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 99,
+                            lineNumber: 91,
                             columnNumber: 25
+                        }, this),
+                        callbackUrl && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-xs text-slate-400 text-center animate-pulse",
+                            children: [
+                                "Redirecting in ",
+                                autoRedirectTimer,
+                                "s..."
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
+                            lineNumber: 108,
+                            columnNumber: 25
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                            onClick: handleReturnToMerchant,
+                            className: "w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20",
+                            children: callbackUrl ? 'Return to Merchant Now' : 'Done'
+                        }, void 0, false, {
+                            fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
+                            lineNumber: 112,
+                            columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 84,
+                    lineNumber: 78,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-            lineNumber: 60,
+            lineNumber: 48,
             columnNumber: 13
         }, this);
     }
-    if (state.step === 'failed') {
+    if (currentStep === 'failed') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "text-center py-12 space-y-8 animate-scale-in relative overflow-hidden",
             children: [
@@ -1311,7 +1346,7 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                     className: "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-rose-50 rounded-full animate-ping opacity-20"
                 }, void 0, false, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 123,
+                    lineNumber: 127,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1325,17 +1360,17 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     size: 32
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 128,
+                                    lineNumber: 132,
                                     columnNumber: 29
                                 }, this)
                             }, void 0, false, {
                                 fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                lineNumber: 127,
+                                lineNumber: 131,
                                 columnNumber: 25
                             }, this)
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 126,
+                            lineNumber: 130,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1343,36 +1378,36 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                                     className: "text-2xl font-bold text-slate-900",
-                                    children: state.error.includes('rejected') ? 'Verification Rejected' : 'Payment Failed'
+                                    children: state?.error?.includes('rejected') ? 'Verification Rejected' : 'Payment Failed'
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 133,
+                                    lineNumber: 137,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                     className: "text-slate-500 text-sm max-w-xs mx-auto leading-relaxed",
-                                    children: state.error || 'We could not verify your payment. Please check your details and try again.'
+                                    children: state?.error || 'We could not verify your payment. Please check your details and try again.'
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 136,
+                                    lineNumber: 140,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 132,
+                            lineNumber: 136,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 125,
+                    lineNumber: 129,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                     className: "space-y-3 max-w-xs mx-auto relative z-10",
                     children: [
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                        setState && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                             onClick: ()=>setState((prev)=>({
                                         ...prev,
                                         step: 'payment',
@@ -1384,15 +1419,15 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     size: 16
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 147,
-                                    columnNumber: 25
+                                    lineNumber: 152,
+                                    columnNumber: 29
                                 }, this),
                                 "Try Again"
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 143,
-                            columnNumber: 21
+                            lineNumber: 148,
+                            columnNumber: 25
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                             onClick: ()=>window.open('mailto:support@sharkfunded.com', '_blank'),
@@ -1400,23 +1435,23 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: "Contact Support"
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 151,
+                            lineNumber: 157,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 142,
+                    lineNumber: 146,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-            lineNumber: 121,
+            lineNumber: 125,
             columnNumber: 13
         }, this);
     }
-    if (state.step === 'review_pending') {
+    if (currentStep === 'review_pending') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "text-center py-12 space-y-6 animate-fade-in",
             children: [
@@ -1427,12 +1462,12 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                         className: "animate-pulse"
                     }, void 0, false, {
                         fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                        lineNumber: 166,
+                        lineNumber: 172,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 165,
+                    lineNumber: 171,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1443,7 +1478,7 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: "Payment Under Review"
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 169,
+                            lineNumber: 175,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1451,13 +1486,13 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: "Your payment is currently being reviewed by our team. We will notify you once it's approved."
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 170,
+                            lineNumber: 176,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 168,
+                    lineNumber: 174,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1473,12 +1508,12 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                         children: "ID"
                                     }, void 0, false, {
                                         fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                        lineNumber: 177,
+                                        lineNumber: 183,
                                         columnNumber: 29
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 176,
+                                    lineNumber: 182,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1489,27 +1524,27 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                             children: "Order ID"
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                            lineNumber: 180,
+                                            lineNumber: 186,
                                             columnNumber: 29
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "text-sm font-mono font-bold text-slate-900",
-                                            children: officialOrderId || 'Pending...'
+                                            children: currentOrderId || 'Pending...'
                                         }, void 0, false, {
                                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                            lineNumber: 181,
+                                            lineNumber: 187,
                                             columnNumber: 29
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 179,
+                                    lineNumber: 185,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 175,
+                            lineNumber: 181,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1520,36 +1555,36 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                                     className: "animate-spin"
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 185,
+                                    lineNumber: 191,
                                     columnNumber: 25
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                     children: "Checking status automatically..."
                                 }, void 0, false, {
                                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                                    lineNumber: 186,
+                                    lineNumber: 192,
                                     columnNumber: 25
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 184,
+                            lineNumber: 190,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 174,
+                    lineNumber: 180,
                     columnNumber: 17
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-            lineNumber: 164,
+            lineNumber: 170,
             columnNumber: 13
         }, this);
     }
-    if (state.step === 'expired') {
+    if (currentStep === 'expired') {
         return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "text-center py-12 space-y-6 animate-scale-in",
             children: [
@@ -1559,12 +1594,12 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                         size: 32
                     }, void 0, false, {
                         fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                        lineNumber: 197,
+                        lineNumber: 203,
                         columnNumber: 21
                     }, this)
                 }, void 0, false, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 196,
+                    lineNumber: 202,
                     columnNumber: 17
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1574,7 +1609,7 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: "Session Expired"
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 200,
+                            lineNumber: 206,
                             columnNumber: 21
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1582,16 +1617,16 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                             children: "Please start over."
                         }, void 0, false, {
                             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                            lineNumber: 201,
+                            lineNumber: 207,
                             columnNumber: 21
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 199,
+                    lineNumber: 205,
                     columnNumber: 17
                 }, this),
-                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
+                setState && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
                     onClick: ()=>setState((prev)=>({
                                 ...prev,
                                 step: 'details',
@@ -1601,13 +1636,13 @@ function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, ch
                     children: "Start Over"
                 }, void 0, false, {
                     fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-                    lineNumber: 203,
-                    columnNumber: 17
+                    lineNumber: 210,
+                    columnNumber: 21
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/payment-page/PaymentStatus.tsx",
-            lineNumber: 195,
+            lineNumber: 201,
             columnNumber: 13
         }, this);
     }

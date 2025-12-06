@@ -2,41 +2,29 @@ import React from 'react';
 import { CheckCircle2, Clock, Download, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { PaymentStatusProps } from './types';
 
-// Simplified props for Success/Verified state
-interface PaymentStatusProps {
-    step: 'success' | 'verified' | 'failed' | 'review_pending' | 'expired';
-    amount: string;
-    orderId: string;
-    callbackUrl?: string | null;
-    // Legacy props (optional/unused for success view but kept for compatibility if needed elsewhere)
-    state?: any;
-    setState?: any;
-    checkStatus?: any;
-    generateInvoice?: any;
-}
-
-export default function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice }: PaymentStatusProps) {
+// Local interface removed to fix conflict with imported types
+export default function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId }: PaymentStatusProps) {
 
     const [autoRedirectTimer, setAutoRedirectTimer] = React.useState(5);
 
-    // If "state" prop exists (legacy usage), use it. otherwise use direct props.
-    // Actually, let's normalize.
+    // Normalize props
     const currentStep = step || state?.step;
-    const currentAmount = amount || state?.amount;
-    const currentOrderId = orderId || state?.orderId;
-    // ... logic continues ...
+    const currentAmount = amount || state?.amount || '0';
+    // officialOrderId is passed as prop usually, or we might use orderId prop
+    const currentOrderId = officialOrderId || orderId || 'N/A';
 
     const handleReturnToMerchant = React.useCallback(() => {
         if (callbackUrl) {
             const url = new URL(callbackUrl);
             url.searchParams.set('status', currentStep === 'verified' ? 'success' : 'pending');
             url.searchParams.set('orderId', currentOrderId);
-            // url.searchParams.set('utr', state?.utr || ''); // logic needs state for UTR if available
+            // utr might be in state
+            if (state?.utr) url.searchParams.set('utr', state.utr);
             window.location.href = url.toString();
         } else {
             window.location.reload();
         }
-    }, [callbackUrl, currentStep, currentOrderId]);
+    }, [callbackUrl, currentStep, currentOrderId, state]);
 
     // Auto-redirect effect
     React.useEffect(() => {
@@ -77,22 +65,26 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                     </div>
                     <div className="flex justify-between">
                         <span className="text-slate-500">Order ID</span>
-                        <span className="font-mono font-bold text-slate-900 break-all">{currentOrderId || 'Generating...'}</span>
+                        <span className="font-mono font-bold text-slate-900 break-all">{currentOrderId}</span>
                     </div>
+                    {state?.utr && (
+                        <div className="flex justify-between">
+                            <span className="text-slate-500">Reference/UTR</span>
+                            <span className="font-mono font-bold text-slate-900">{state.utr}</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-3 pt-4">
-                    {callbackUrl && (
-                        <p className="text-xs text-slate-400 text-center animate-pulse">
-                            Redirecting in {autoRedirectTimer}s...
-                        </p>
+                    {/* Check Status Button (Only if state exists and we have a screenshot but not verified yet) */}
+                    {state?.screenshot_url && currentStep !== 'verified' && checkStatus && (
+                        <button
+                            onClick={checkStatus}
+                            className="w-full bg-white text-slate-700 border border-slate-200 py-3 rounded-lg font-bold text-sm hover:bg-slate-50 transition-all"
+                        >
+                            Check Status
+                        </button>
                     )}
-                    <button
-                        onClick={handleReturnToMerchant}
-                        className="w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20"
-                    >
-                        {callbackUrl ? 'Return to Merchant Now' : 'Done'}
-                    </button>
 
                     {/* Invoice Button (Only if generateInvoice function is passed) */}
                     {generateInvoice && (
@@ -111,12 +103,24 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                             Download Invoice
                         </button>
                     )}
+
+                    {callbackUrl && (
+                        <p className="text-xs text-slate-400 text-center animate-pulse">
+                            Redirecting in {autoRedirectTimer}s...
+                        </p>
+                    )}
+                    <button
+                        onClick={handleReturnToMerchant}
+                        className="w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20"
+                    >
+                        {callbackUrl ? 'Return to Merchant Now' : 'Done'}
+                    </button>
                 </div>
             </div>
         );
     }
 
-    if (state.step === 'failed') {
+    if (currentStep === 'failed') {
         return (
             <div className="text-center py-12 space-y-8 animate-scale-in relative overflow-hidden">
                 {/* Background Pulse Effect */}
@@ -131,22 +135,24 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
 
                     <div className="space-y-3">
                         <h2 className="text-2xl font-bold text-slate-900">
-                            {state.error.includes('rejected') ? 'Verification Rejected' : 'Payment Failed'}
+                            {state?.error?.includes('rejected') ? 'Verification Rejected' : 'Payment Failed'}
                         </h2>
                         <p className="text-slate-500 text-sm max-w-xs mx-auto leading-relaxed">
-                            {state.error || 'We could not verify your payment. Please check your details and try again.'}
+                            {state?.error || 'We could not verify your payment. Please check your details and try again.'}
                         </p>
                     </div>
                 </div>
 
                 <div className="space-y-3 max-w-xs mx-auto relative z-10">
-                    <button
-                        onClick={() => setState(prev => ({ ...prev, step: 'payment', error: '' }))}
-                        className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20 flex items-center justify-center gap-2"
-                    >
-                        <ArrowLeft size={16} />
-                        Try Again
-                    </button>
+                    {setState && (
+                        <button
+                            onClick={() => setState(prev => ({ ...prev, step: 'payment', error: '' }))}
+                            className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20 flex items-center justify-center gap-2"
+                        >
+                            <ArrowLeft size={16} />
+                            Try Again
+                        </button>
+                    )}
 
                     <button
                         onClick={() => window.open('mailto:support@sharkfunded.com', '_blank')}
@@ -159,7 +165,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
         );
     }
 
-    if (state.step === 'review_pending') {
+    if (currentStep === 'review_pending') {
         return (
             <div className="text-center py-12 space-y-6 animate-fade-in">
                 <div className="w-20 h-20 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto shadow-sm border border-amber-100">
@@ -178,7 +184,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                         </div>
                         <div className="flex-1 text-left">
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Order ID</p>
-                            <p className="text-sm font-mono font-bold text-slate-900">{officialOrderId || 'Pending...'}</p>
+                            <p className="text-sm font-mono font-bold text-slate-900">{currentOrderId || 'Pending...'}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-slate-400 justify-center mt-3 pt-3 border-t border-slate-200">
@@ -190,7 +196,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
         );
     }
 
-    if (state.step === 'expired') {
+    if (currentStep === 'expired') {
         return (
             <div className="text-center py-12 space-y-6 animate-scale-in">
                 <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto">
@@ -200,12 +206,14 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                     <h2 className="text-xl font-bold text-slate-900">Session Expired</h2>
                     <p className="text-slate-500 text-sm mt-1">Please start over.</p>
                 </div>
-                <button
-                    onClick={() => setState(prev => ({ ...prev, step: 'details', error: '' }))}
-                    className="w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20"
-                >
-                    Start Over
-                </button>
+                {setState && (
+                    <button
+                        onClick={() => setState(prev => ({ ...prev, step: 'details', error: '' }))}
+                        className="w-full bg-[#635BFF] text-white py-3 rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-blue-500/20"
+                    >
+                        Start Over
+                    </button>
+                )}
             </div>
         );
     }
