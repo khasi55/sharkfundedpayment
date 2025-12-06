@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/viswanathreddy/Downloads/sharkfunded/src/app/page.tsx"],"sourcesContent":["'use client';\n\nimport { useEffect } from 'react';\nimport { useRouter } from 'next/navigation';\n\nexport default function Home() {\n    const router = useRouter();\n\n    useEffect(() => {\n        const uuid = crypto.randomUUID ? crypto.randomUUID() : `sf-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;\n        router.replace(`/secure-checkout/${uuid}`);\n    }, [router]);\n\n    return null;\n}\n"],"names":[],"mappings":";;;;AAEA;AACA;;AAHA;;;AAKe,SAAS;;IACpB,MAAM,SAAS,IAAA,8KAAS;IAExB,IAAA,sMAAS;0BAAC;YACN,MAAM,OAAO,OAAO,UAAU,GAAG,OAAO,UAAU,KAAK,CAAC,GAAG,EAAE,KAAK,GAAG,GAAG,CAAC,EAAE,KAAK,MAAM,GAAG,QAAQ,CAAC,IAAI,MAAM,CAAC,GAAG,IAAI;YACpH,OAAO,OAAO,CAAC,CAAC,iBAAiB,EAAE,MAAM;QAC7C;yBAAG;QAAC;KAAO;IAEX,OAAO;AACX;GATwB;;QACL,8KAAS;;;KADJ"}},
-    {"offset": {"line": 41, "column": 0}, "map": {"version":3,"sources":["file:///Users/viswanathreddy/Downloads/sharkfunded/node_modules/next/navigation.js"],"sourcesContent":["module.exports = require('./dist/client/components/navigation')\n"],"names":[],"mappings":"AAAA,OAAO,OAAO","ignoreList":[0]}}]
-}
