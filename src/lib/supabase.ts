@@ -17,5 +17,12 @@ const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
 export const supabaseAdmin = createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
-    serviceRoleKey || 'placeholder-service-key'
+    serviceRoleKey || 'placeholder-service-key',
+    {
+        auth: {
+            persistSession: false,
+            autoRefreshToken: false,
+            detectSessionInUrl: false
+        }
+    }
 );
