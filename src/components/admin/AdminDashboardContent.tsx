@@ -12,9 +12,9 @@ import TransactionDetailModal from './dashboard/TransactionDetailModal';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
-    const isDashboard = pathname === '/admin';
-    const isTransactions = pathname === '/admin/transactions';
-    const isUsers = pathname === '/admin/users';
+    const isDashboard = pathname === '/sharkfunded2logintoadminwithpermission';
+    const isTransactions = pathname === '/sharkfunded2logintoadminwithpermission/transactions';
+    const isUsers = pathname === '/sharkfunded2logintoadminwithpermission/users';
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);

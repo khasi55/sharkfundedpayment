@@ -28,76 +28,105 @@ export default function PaymentQRSection({
     copied
 }: PaymentQRSectionProps) {
     return (
-        <div className="space-y-8 animate-fade-in">
-            <div className="text-center">
-                <h2 className="text-xl font-bold text-slate-900 mb-2">Scan QR to Pay</h2>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-bold border border-amber-100">
-                    <Clock size={12} className="animate-pulse" />
-                    Expires in {formatTime(timeLeft)}
+        <div className="space-y-6 animate-fade-in">
+            {/* Header & Timer */}
+            <div className="text-center space-y-3">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Scan QR to Pay</h2>
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border transition-all duration-500 shadow-sm ${timeLeft < 60 ? 'bg-rose-50 text-rose-600 border-rose-100 animate-pulse' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                    <Clock size={12} className={timeLeft < 60 ? 'animate-bounce' : ''} />
+                    <span>Expires in <span className="font-mono">{formatTime(timeLeft)}</span></span>
                 </div>
             </div>
 
             <div className="flex flex-col items-center">
+                {/* Merchant Info */}
                 <div className="mb-4 text-center">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Paying to</p>
-                    <p className="text-lg font-bold text-slate-900">{merchantName}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Paying to Merchant</p>
+                    <p className="text-base font-bold text-slate-900 flex items-center gap-1.5 justify-center">
+                        {merchantName}
+                        <CheckCircle2 size={14} className="text-emerald-500" />
+                    </p>
                 </div>
 
-                <div className="p-1 bg-white rounded-xl border border-slate-200 shadow-sm mb-4 cursor-pointer hover:shadow-md transition-all" onClick={() => copyToClipboard(upiUrl)}>
-                    <QRCodeSVG value={upiUrl} size={180} level="L" className="rounded-lg" />
+                {/* QR Code Card - Compacted */}
+                <div
+                    className="p-4 bg-white rounded-2xl border border-slate-100 shadow-lg shadow-indigo-100/50 mb-5 cursor-pointer hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 transition-all duration-300 relative group"
+                    onClick={() => copyToClipboard(upiId)}
+                >
+                    {/* Corner Accents */}
+                    <div className="absolute top-3 left-3 w-3 h-3 border-l-2 border-t-2 border-[#635BFF] rounded-tl-lg"></div>
+                    <div className="absolute top-3 right-3 w-3 h-3 border-r-2 border-t-2 border-[#635BFF] rounded-tr-lg"></div>
+                    <div className="absolute bottom-3 left-3 w-3 h-3 border-l-2 border-b-2 border-[#635BFF] rounded-bl-lg"></div>
+                    <div className="absolute bottom-3 right-3 w-3 h-3 border-r-2 border-b-2 border-[#635BFF] rounded-br-lg"></div>
+
+                    <div className="p-1.5 bg-white rounded-lg">
+                        <QRCodeSVG value={upiUrl} size={160} level="L" className="rounded-md" />
+                    </div>
+
                     {copied && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-white/90 rounded-xl backdrop-blur-sm">
-                            <span className="text-xs font-bold text-slate-900 flex items-center gap-1"><CheckCircle2 size={14} className="text-emerald-500" /> Copied</span>
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/95 rounded-2xl backdrop-blur-md animate-fade-in">
+                            <div className="flex flex-col items-center gap-1.5">
+                                <CheckCircle2 size={24} className="text-[#635BFF] animate-bounce" />
+                                <span className="text-xs font-bold text-slate-900">Link Copied!</span>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-md border border-slate-200 cursor-pointer hover:bg-slate-100" onClick={() => copyToClipboard(upiId)}>
-                    <span className="font-mono font-medium">{upiId}</span>
-                    <Copy size={14} className="text-slate-400" />
+                {/* UPI ID Pill - Compacted */}
+                <div
+                    className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => copyToClipboard(upiId)}
+                >
+                    <span className="font-mono font-semibold group-hover:text-[#635BFF] transition-colors">{upiId}</span>
+                    <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
                 </div>
 
+                {/* Payment Apps Grid - Fixed Sizes */}
                 <div className="mt-6 flex flex-col items-center gap-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Accepted Payment Apps</p>
-                    <div className="flex items-center gap-6">
-                        <img src="https://static.cdnlogo.com/logos/p/6/paytm.svg" alt="Paytm" className="h-6 object-contain" />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Supported Apps</p>
+                    <div className="flex items-center gap-5">
+                        <img src="https://static.cdnlogo.com/logos/p/6/paytm.svg" alt="Paytm" className="h-5 object-contain" />
+                        <div className="w-px h-4 bg-slate-200"></div>
                         <img src="https://static.cdnlogo.com/logos/p/25/phonepe.svg" alt="PhonePe" className="h-20 object-contain" />
+                        <div className="w-px h-4 bg-slate-200"></div>
                         <img src="https://static.cdnlogo.com/logos/g/80/google-pay.png" alt="Google Pay" className="h-20 object-contain" />
                     </div>
                 </div>
             </div>
 
+            {/* UTR Input Section - Compacted */}
             <div className="pt-6 border-t border-slate-100">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Enter UTR / Reference Number</label>
+                <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-2">Reference Number (UTR)</label>
                 <div className="flex gap-2">
                     <input
                         type="text"
-                        className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none text-slate-900 font-mono font-medium placeholder:text-slate-400 shadow-sm"
-                        placeholder="12-digit UTR"
+                        className="flex-1 px-3 py-2.5 bg-slate-50 border border-slate-100 rounded-lg focus:bg-white focus:border-[#635BFF] focus:ring-4 focus:ring-[#635BFF]/10 transition-all duration-300 outline-none text-slate-900 font-mono text-sm font-medium placeholder:text-slate-400 shadow-sm"
+                        placeholder="Enter 12-digit UTR"
                         value={state.utr}
                         onChange={e => setState({ ...state, utr: e.target.value })}
+                        maxLength={12}
                     />
                     <button
                         onClick={handleVerify}
-                        className="px-6 bg-[#635BFF] text-white rounded-lg font-bold text-sm hover:bg-[#5851E3] transition-all shadow-md hover:shadow-lg hover:shadow-blue-500/20"
+                        className="px-6 bg-gradient-to-r from-[#635BFF] to-indigo-600 text-white rounded-lg font-bold text-xs hover:shadow-md hover:shadow-indigo-500/30 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300"
                     >
                         Verify
                     </button>
                 </div>
-                <p className="text-xs text-slate-400 mt-2">
-                    Required to confirm your payment instantly.
-                </p>
+
                 {state.error && (
-                    <div className="mt-3 p-3 bg-rose-50 text-rose-600 text-sm rounded-lg flex items-center gap-2 border border-rose-100 animate-shake">
-                        <AlertCircle size={16} />
-                        <span className="font-medium">{state.error}</span>
+                    <div className="mt-3 p-3 bg-rose-50 text-rose-600 text-xs rounded-lg flex items-center gap-2 border border-rose-100 animate-shake shadow-sm">
+                        <AlertCircle size={14} className="shrink-0" />
+                        <span className="font-semibold">{state.error}</span>
                     </div>
                 )}
             </div>
 
-            <div className="mt-8 flex items-center justify-center gap-2 text-slate-400">
-                <Lock size={12} />
-                <span className="text-[10px] font-medium uppercase tracking-wider">256-bit SSL Encrypted</span>
+            {/* Security Footer */}
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-slate-400 opacity-80 hover:opacity-100 transition-opacity">
+                <Lock size={10} className="text-emerald-500" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">256-bit SSL Encrypted</span>
             </div>
         </div>
     );

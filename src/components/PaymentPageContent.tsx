@@ -199,7 +199,7 @@ export default function PaymentPageContent() {
 
         //  Check every 5 seconds for up to 2 minutes (24 attempts)
         let attempts = 0;
-        const maxAttempts = 24;
+        const maxAttempts = 1;
         const pollInterval = 5000; // 5 seconds
 
         const checkPayment = async () => {
@@ -555,75 +555,62 @@ export default function PaymentPageContent() {
 
     if (loading) {
         const steps = [
-            "Initializing secure environment...",
-            "Encrypting connection...",
-            "Verifying merchant details...",
-            "Preparing payment gateway..."
-        ];
-
-        const icons = [
-            <Shield size={24} className="text-[#635BFF]" />,
-            <Lock size={24} className="text-[#635BFF]" />,
-            <Search size={24} className="text-[#635BFF]" />,
-            <CreditCard size={24} className="text-[#635BFF]" />
+            "Establishing Secure Connection...",
+            "Verifying Shark Verification...",
+            "Syncing with Banking Servers...",
+            "Preparing Secure Checkout..."
         ];
 
         return (
-            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
-                {/* Tech Background Grid */}
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-                <div className="absolute inset-0 bg-[radial-gradient(circle_800px_at_100%_200px,#C9EBFF,transparent)]"></div>
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-hidden bg-[#F8FAFC] font-sans selection:bg-indigo-100 selection:text-indigo-900">
 
-                <div className="relative z-10 flex flex-col items-center w-full max-w-sm">
-                    {/* Logo */}
-                    <div className="mb-8 animate-fade-in relative group">
-                        <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-30 transition-opacity duration-700"></div>
-                        <img
-                            src="/shark-logo-full.png"
-                            alt="Shark Funded"
-                            className="h-14 object-contain animate-float relative z-10"
-                        />
-                        {/* Shimmer Overlay */}
-                        <div className="absolute inset-0 z-20 pointer-events-none overflow-hidden rounded-lg">
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-logo-shimmer"></div>
+                {/* Premium Light Ambient Background */}
+                <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(255,255,255,0.8),_rgba(241,245,249,1))]"></div>
+                    <div className="absolute top-0 left-0 right-0 h-[500px] bg-gradient-to-b from-indigo-50/50 to-transparent opacity-60 blur-3xl"></div>
+                    <div className="absolute bottom-0 left-0 right-0 h-[500px] bg-gradient-to-t from-blue-50/50 to-transparent opacity-40 blur-3xl"></div>
+                </div>
+
+                {/* Subtle Light Grid Overlay */}
+                <div className="absolute inset-0 z-0 bg-[linear-gradient(rgba(99,91,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(99,91,255,0.08)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,black,transparent)]"></div>
+
+                <div className="relative z-10 flex flex-col items-center w-full max-w-sm px-6">
+
+                    {/* Logo Container with Soft Shadow */}
+                    <div className="relative mb-12 group">
+                        <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full opacity-0 group-hover:opacity-30 transition-opacity duration-1000 animate-pulse-slow"></div>
+                        <div className="relative z-10 p-5 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/60 shadow-xl shadow-indigo-100/50 ring-1 ring-white/50">
+                            <img
+                                src="/shark-logo-full.png"
+                                alt="Shark Funded"
+                                className="h-16 w-auto object-contain animate-float"
+                            />
                         </div>
                     </div>
 
-                    {/* Dynamic Icon Container */}
-                    <div className="mb-8 w-16 h-16 bg-white rounded-2xl shadow-lg shadow-indigo-100 border border-indigo-50 flex items-center justify-center relative overflow-hidden">
-                        {icons.map((icon, index) => (
-                            <div
-                                key={index}
-                                className={`absolute transition-all duration-500 transform ${index === loadingStep
-                                    ? 'opacity-100 scale-100 rotate-0'
-                                    : 'opacity-0 scale-50 rotate-12'
-                                    }`}
-                            >
-                                {icon}
+                    {/* Progress Ring & Icon */}
+                    <div className="relative mb-8">
+                        {/* Spinning Ring */}
+                        <div className="w-16 h-16 rounded-full border-2 border-slate-100 relative flex items-center justify-center">
+                            <div className="absolute inset-0 rounded-full border-2 border-t-[#635BFF] border-r-[#635BFF]/50 border-b-transparent border-l-transparent animate-spin"></div>
+
+                            {/* Inner Icon */}
+                            <div className="text-[#635BFF] animate-pulse">
+                                <ShieldCheck size={24} />
                             </div>
-                        ))}
+                        </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden mb-6 relative">
-                        <div
-                            className="absolute top-0 left-0 h-full bg-[#635BFF] transition-all duration-700 ease-out rounded-full"
-                            style={{ width: `${((loadingStep + 1) / 4) * 100}%` }}
-                        ></div>
-                        {/* Shimmer Effect on Bar */}
-                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" style={{ backgroundSize: '200% 100%' }}></div>
-                    </div>
-
-                    {/* Status Text */}
-                    <div className="h-6 flex items-center justify-center overflow-hidden relative w-full">
+                    {/* Loading Steps Text */}
+                    <div className="h-8 flex items-center justify-center overflow-hidden relative w-full mb-2">
                         {steps.map((text, index) => (
                             <p
                                 key={index}
-                                className={`absolute text-sm font-medium text-slate-600 transition-all duration-500 transform ${index === loadingStep
-                                    ? 'opacity-100 translate-y-0'
+                                className={`absolute text-sm font-semibold tracking-wide text-slate-700 transition-all duration-500 transform ${index === loadingStep
+                                    ? 'opacity-100 translate-y-0 scale-100'
                                     : index < loadingStep
-                                        ? 'opacity-0 -translate-y-4'
-                                        : 'opacity-0 translate-y-4'
+                                        ? 'opacity-0 -translate-y-4 scale-95'
+                                        : 'opacity-0 translate-y-4 scale-105'
                                     }`}
                             >
                                 {text}
@@ -631,45 +618,40 @@ export default function PaymentPageContent() {
                         ))}
                     </div>
 
-                    {/* Security Badge (Appears at Step 2) */}
-                    <div className={`mt-12 transition-all duration-700 ${loadingStep >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-                        <div className="flex items-center gap-2 px-4 py-2 bg-white/50 backdrop-blur-sm rounded-full border border-slate-200 shadow-sm">
-                            <ShieldCheck size={14} className="text-emerald-500" />
-                            <span className="text-xs font-semibold text-slate-600">Bank-Grade Security</span>
+                    {/* Progress Bar Line */}
+                    <div className="w-48 h-1 bg-slate-200 rounded-full overflow-hidden relative">
+                        <div
+                            className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#635BFF] to-indigo-400 transition-all duration-700 ease-out shadow-[0_0_10px_rgba(99,91,255,0.3)]"
+                            style={{ width: `${((loadingStep + 1) / 4) * 100}%` }}
+                        ></div>
+                    </div>
+
+                    {/* Security Badge */}
+                    <div className={`mt-8 transition-all duration-700 delay-300 ${loadingStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-white/60 backdrop-blur-sm rounded-full border border-slate-200 shadow-sm">
+                            <Lock size={10} className="text-emerald-500" />
+                            <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase">256-Bit Secure</span>
                         </div>
                     </div>
+
                 </div>
 
                 <style jsx>{`
                     @keyframes float {
-                        0%, 100% { transform: translateY(0px); }
-                        50% { transform: translateY(-8px); }
+                         0%, 100% { transform: translateY(0px); }
+                        50% { transform: translateY(-6px); }
+                     }
+                    @keyframes pulse-slow {
+                        0%, 100% { opacity: 0.3; transform: scale(1); }
+                         50% { opacity: 0.6; transform: scale(1.05); }
                     }
-                    @keyframes logo-shimmer {
-                        0% { transform: translateX(-150%) skewX(-15deg); }
-                        100% { transform: translateX(150%) skewX(-15deg); }
-                    }
-                    @keyframes shimmer {
-                        0% { transform: translateX(-100%); }
-                        100% { transform: translateX(100%); }
-                    }
-                    @keyframes breath {
-                        0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px rgba(99, 91, 255, 0)); }
-                        50% { transform: scale(1.05); filter: drop-shadow(0 0 10px rgba(99, 91, 255, 0.2)); }
-                    }
-                    .animate-float {
+                     .animate-float {
                         animation: float 4s ease-in-out infinite;
+                     }
+                     .animate-pulse-slow {
+                        animation: pulse-slow 3s ease-in-out infinite;
                     }
-                    .animate-logo-shimmer {
-                        animation: logo-shimmer 2.5s infinite;
-                    }
-                    .animate-shimmer {
-                        animation: shimmer 1.5s infinite;
-                    }
-                    .animate-breath {
-                        animation: breath 3s ease-in-out infinite;
-                    }
-                `}</style>
+                 `}</style>
             </div>
         );
     }

@@ -22,13 +22,13 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
     const confirmLogout = () => {
         localStorage.removeItem('admin_user');
         document.cookie = 'admin_session=; path=/; max-age=0;';
-        router.push('/admin/login');
+        router.push('/sharkfunded2logintoadminwithpermission/login');
     };
 
     useEffect(() => {
         const adminUser = localStorage.getItem('admin_user');
         if (!adminUser) {
-            router.replace('/admin/login');
+            router.replace('/sharkfunded2logintoadminwithpermission/login');
         }
     }, [router]);
 
@@ -58,43 +58,43 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2">Menu</p>
                     <Link
-                        href="/admin"
+                        href="/sharkfunded2logintoadminwithpermission"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/admin') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                     >
-                        <LayoutDashboard size={20} className={isActive('/admin') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <LayoutDashboard size={20} className={isActive('/sharkfunded2logintoadminwithpermission') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">Dashboard</span>
                     </Link>
                     <Link
-                        href="/admin/transactions"
+                        href="/sharkfunded2logintoadminwithpermission/transactions"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/admin/transactions') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                     >
-                        <CreditCard size={20} className={isActive('/admin/transactions') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">Transactions</span>
                     </Link>
                     <Link
-                        href="/admin/webhook-logs"
+                        href="/sharkfunded2logintoadminwithpermission/webhook-logs"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/admin/webhook-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                     >
-                        <ShieldCheck size={20} className={isActive('/admin/webhook-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <ShieldCheck size={20} className={isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">Received Confirmations</span>
                     </Link>
                     <Link
-                        href="/admin/users"
+                        href="/sharkfunded2logintoadminwithpermission/users"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/admin/users') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/users') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                     >
-                        <Users size={20} className={isActive('/admin/users') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/users') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">Users</span>
                     </Link>
                     <Link
-                        href="/admin/system-status"
+                        href="/sharkfunded2logintoadminwithpermission/system-status"
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/admin/system-status') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
                     >
-                        <Activity size={20} className={isActive('/admin/system-status') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">System Status</span>
                     </Link>
 
