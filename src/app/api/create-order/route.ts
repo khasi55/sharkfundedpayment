@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { z } from 'zod';
+
+const CreateOrderSchema = z.object({
+    amount: z.coerce.number().positive('Amount must be positive'),
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email address'),
+    callback_url: z.string().url().optional().or(z.literal('')),
+});
 
 export async function POST(request: Request) {
     try {
@@ -21,14 +29,17 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { amount, name, email, callback_url } = body;
 
-        if (!amount || !name || !email) {
+        const validation = CreateOrderSchema.safeParse(body);
+
+        if (!validation.success) {
             return NextResponse.json(
-                { success: false, message: 'Missing required fields: amount, name, email' },
+                { success: false, message: 'Validation Error', errors: validation.error.format() },
                 { status: 400 }
             );
         }
+
+        const { amount, name, email, callback_url } = validation.data;
 
         // Create a new transaction record
         // We use the 'id' (UUID) as the session identifier

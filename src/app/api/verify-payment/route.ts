@@ -1,18 +1,31 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
+import { z } from 'zod';
+
+const VerifyPaymentSchema = z.object({
+    utr: z.string().min(1, 'UTR is required'),
+    amount: z.union([z.string(), z.number()]),
+    orderId: z.string().optional(),
+    email: z.string().email().optional().or(z.literal('')),
+    name: z.string().optional(),
+});
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { utr, amount, orderId, email, name } = body;
 
-        const requestMsg = `Received verification request: UTR=${utr}, Email=${email}`;
+        const validation = VerifyPaymentSchema.safeParse(body);
 
-
-        if (!utr || !amount) {
-            return NextResponse.json({ success: false, message: 'UTR and Amount are required' }, { status: 400 });
+        if (!validation.success) {
+            return NextResponse.json(
+                { success: false, message: 'Validation Error', errors: validation.error.format() },
+                { status: 400 }
+            );
         }
+
+        const { utr, amount, orderId, email, name } = validation.data;
+        const amountStr = String(amount);
 
 
 
@@ -37,7 +50,7 @@ export async function POST(request: Request) {
                     const result = await sendPaymentSuccessEmail({
                         to: recipientEmail,
                         name: recipientName,
-                        amount: amount,
+                        amount: amountStr,
                         orderId: orderIdentifier,
                         utr: utr,
                         date: new Date().toLocaleString()
@@ -67,7 +80,7 @@ export async function POST(request: Request) {
 
         if (foundPayment) {
             // Check amount (allow small difference)
-            if (parseFloat(foundPayment.amount) === parseFloat(amount)) {
+            if (parseFloat(foundPayment.amount) === parseFloat(amountStr)) {
 
 
                 // Fetch transaction details if needed (mostly for fallback if email not provided)
@@ -94,7 +107,7 @@ export async function POST(request: Request) {
             const mockTransaction = {
                 id: 'mock-id',
                 utr,
-                amount,
+                amount: amountStr,
                 status: 'verified',
                 order_id: orderId,
                 customer_details: { email, name }
