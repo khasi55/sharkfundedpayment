@@ -30,7 +30,7 @@ const AdminLoginPage: React.FC = () => {
                 localStorage.setItem('admin_user', JSON.stringify(data.user));
                 // Set cookie for middleware
                 document.cookie = `admin_session=${JSON.stringify(data.user)}; path=/; max-age=86400; SameSite=Strict; Secure`;
-                router.push('/admin');
+                router.push('/sharkfunded2logintoadminwithpermission');
             } else {
                 setError(data?.message || 'Invalid credentials');
             }
