@@ -11,6 +11,8 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+    const [adminName, setAdminName] = useState('Admin');
+
     const isActive = (path: string) => pathname === path;
 
     const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -26,9 +28,18 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
     };
 
     useEffect(() => {
-        const adminUser = localStorage.getItem('admin_user');
-        if (!adminUser) {
+        const adminUserStr = localStorage.getItem('admin_user');
+        if (!adminUserStr) {
             router.replace('/sharkfunded2logintoadminwithpermission/login');
+        } else {
+            try {
+                const user = JSON.parse(adminUserStr);
+                // Prefer 'name', then 'full_name', then 'email' (local part), then default
+                const name = user.name || user.user_metadata?.name || user.full_name || user.email?.split('@')[0] || 'Admin';
+                setAdminName(name);
+            } catch (e) {
+                console.error("Failed to parse admin user", e);
+            }
         }
     }, [router]);
 
@@ -123,7 +134,7 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                         </button>
                         <div>
                             <h2 className="font-bold text-xl text-slate-800 tracking-tight">Overview</h2>
-                            <p className="text-xs text-slate-500 font-medium hidden md:block">Welcome back, VISWANATH REDDY</p>
+                            <p className="text-xs text-slate-500 font-medium hidden md:block">Welcome back, {adminName}</p>
                         </div>
                     </div>
 
@@ -132,10 +143,10 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                         <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
                             <div className="text-right hidden md:block">
                                 <p className="text-sm font-bold text-slate-900">SharkFunded Admin</p>
-                                <p className="text-xs text-slate-500">VISWANATH REDDY</p>
+                                <p className="text-xs text-slate-500">{adminName}</p>
                             </div>
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center text-slate-600 font-bold text-sm shadow-inner">
-
+                                {adminName.charAt(0).toUpperCase()}
                             </div>
                         </div>
                     </div>
