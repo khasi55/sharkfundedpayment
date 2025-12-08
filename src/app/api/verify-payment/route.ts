@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
 import { z } from 'zod';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 const VerifyPaymentSchema = z.object({
     utr: z.string().min(1, 'UTR is required'),
@@ -13,6 +14,17 @@ const VerifyPaymentSchema = z.object({
 
 export async function POST(request: Request) {
     try {
+        // Rate Limiting
+        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const rateLimit = await checkRateLimit(ip, 'verify-payment', 10, 60); // 10 requests per minute
+
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { success: false, message: 'Too many requests. Please try again later.' },
+                { status: 429 }
+            );
+        }
+
         const body = await request.json();
 
         const validation = VerifyPaymentSchema.safeParse(body);

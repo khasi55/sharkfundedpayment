@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { z } from 'zod';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 const CreateOrderSchema = z.object({
     amount: z.coerce.number().positive('Amount must be positive'),
@@ -11,6 +12,17 @@ const CreateOrderSchema = z.object({
 
 export async function POST(request: Request) {
     try {
+        // Rate Limiting
+        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const rateLimit = await checkRateLimit(ip, 'create-order', 5, 60); // 5 requests per minute
+
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { success: false, message: 'Too many requests. Please try again later.' },
+                { status: 429 }
+            );
+        }
+
         // Authentication Check (Basic Auth)
         const authHeader = request.headers.get('authorization');
         if (!authHeader || !authHeader.startsWith('Basic ')) {
