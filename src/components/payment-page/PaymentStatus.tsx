@@ -15,7 +15,12 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
     const handleReturnToMerchant = React.useCallback(() => {
         if (callbackUrl) {
             const url = new URL(callbackUrl);
-            url.searchParams.set('status', currentStep === 'verified' ? 'success' : 'pending');
+
+            let statusParam = 'pending';
+            if (currentStep === 'verified') statusParam = 'success';
+            else if (currentStep === 'failed') statusParam = 'failed';
+
+            url.searchParams.set('status', statusParam);
             url.searchParams.set('orderId', currentOrderId);
             // utr might be in state
             if (state?.utr) url.searchParams.set('utr', state.utr);

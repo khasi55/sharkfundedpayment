@@ -773,7 +773,7 @@ export default function PaymentPageContent() {
                             />
                         )}
 
-                        {state.step === 'success' || state.step === 'verified' || state.step === 'review_pending' ? (
+                        {state.step === 'success' || state.step === 'verified' || state.step === 'review_pending' || state.step === 'failed' ? (
                             <div className="md:col-span-12 lg:col-span-8 bg-white p-8 md:p-12 flex items-center justify-center min-h-[600px]">
                                 <PaymentStatus
                                     step={state.step}
