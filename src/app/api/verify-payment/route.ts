@@ -111,8 +111,14 @@ export async function POST(request: Request) {
                     data: transaction
                 });
             } else {
-
+                console.log(`Amount mismatch for UTR ${utr}. Logged: ${foundPayment.amount}, Requested: ${amountStr}`);
+                return NextResponse.json({
+                    success: false,
+                    message: `Amount mismatch. We received Rs. ${foundPayment.amount} but you are verifying for Rs. ${amountStr}. Please check the amount.`
+                });
             }
+        } else {
+            console.log(`No webhook log found for UTR ${utr}`);
         }
 
         // Mock Logic
