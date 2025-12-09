@@ -193,7 +193,7 @@ export default function PaymentPageContent() {
                 .eq('status', 'verified')
                 .single();
 
-            if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "Row not found"
+            if (checkError && checkError.code !== 'NO ROW FOUND') {
                 console.error('Error checking UTR:', checkError);
                 setState(prev => ({ ...prev, step: 'failed', error: 'Error checking transaction status' }));
                 return;
@@ -209,7 +209,7 @@ export default function PaymentPageContent() {
 
         //  Check every 5 seconds for up to 2 minutes (24 attempts)
         let attempts = 0;
-        const maxAttempts = 1;
+        const maxAttempts = 24;
         const pollInterval = 5000; // 5 seconds
 
         const checkPayment = async () => {
@@ -428,6 +428,8 @@ export default function PaymentPageContent() {
             console.error('Error uploading:', error);
             if (error.code === '23505' || error.message?.includes('duplicate key')) {
                 setState(prev => ({ ...prev, error: 'This UTR has already been submitted. Please check your status.' }));
+            } else if (error.message?.includes('violates row-level security') || error.message?.includes('policy')) {
+                setState(prev => ({ ...prev, error: 'This image has already been used or you do not have permission to upload. Please try a new image.' }));
             } else {
                 setState(prev => ({ ...prev, error: error.message || 'Error uploading screenshot' }));
             }
