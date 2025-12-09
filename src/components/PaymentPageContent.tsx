@@ -66,6 +66,16 @@ export default function PaymentPageContent() {
                                 email: data.customer_details?.email || '',
                                 step: 'verified'
                             }));
+                        } else if (data.status === 'rejected') {
+                            // Payment rejected - End Session
+                            setState(prev => ({
+                                ...prev,
+                                amount: data.amount.toString(),
+                                name: data.customer_details?.name || '',
+                                email: data.customer_details?.email || '',
+                                step: 'failed',
+                                error: 'Payment verification rejected by admin.'
+                            }));
                         } else {
                             // Pending payment
                             setState(prev => ({

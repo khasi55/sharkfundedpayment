@@ -32,7 +32,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
 
     // Auto-redirect effect
     React.useEffect(() => {
-        if (currentStep === 'verified' && callbackUrl) {
+        if ((currentStep === 'verified' || currentStep === 'failed') && callbackUrl) {
             const timer = setInterval(() => {
                 setAutoRedirectTimer((prev) => {
                     if (prev <= 1) {
@@ -175,7 +175,7 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                 </div>
 
                 <div className="w-full space-y-3">
-                    {setState && (
+                    {setState && !state?.error?.includes('rejected') && (
                         <button
                             onClick={() => setState(prev => ({ ...prev, step: 'payment', error: '' }))}
                             className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-indigo-500/20 flex items-center justify-center gap-2"
@@ -190,6 +190,12 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
                     >
                         Contact Support
                     </button>
+
+                    {callbackUrl && (
+                        <p className="text-xs text-rose-400 text-center animate-pulse pt-2">
+                            Redirecting in {autoRedirectTimer}s...
+                        </p>
+                    )}
                 </div>
             </StatusCard>
         );
