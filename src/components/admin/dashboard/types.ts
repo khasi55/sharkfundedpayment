@@ -9,6 +9,7 @@ export interface Transaction {
     customer_details: {
         name: string;
         email: string;
+        failure_reason?: string;
     };
 }
 

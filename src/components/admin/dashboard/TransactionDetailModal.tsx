@@ -82,6 +82,13 @@ export default function TransactionDetailModal({
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Date</p>
                                 <div className="text-sm text-slate-700">{formatDate(transaction.created_at)} at {formatTime(transaction.created_at)}</div>
                             </div>
+
+                            {transaction.customer_details?.failure_reason && (
+                                <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
+                                    <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Failure Reason</p>
+                                    <p className="text-sm text-red-700">{transaction.customer_details.failure_reason}</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Status Actions */}

@@ -107,7 +107,7 @@ export const generateInvoice = async (details: TransactionDetails) => {
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(colors.secondary);
-        doc.text("support@sharkfunded.com", 15, startY + 11);
+        doc.text("payment@sharkfunded.com", 15, startY + 11);
         doc.text("www.sharkfunded.com", 15, startY + 16);
 
         // BILL TO
@@ -205,7 +205,7 @@ export const generateInvoice = async (details: TransactionDetails) => {
         doc.setFontSize(9);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(colors.secondary);
-        doc.text("Questions? Email us at support@sharkfunded.com", 105, pageHeight - 30, { align: 'center' });
+        doc.text("Questions? Email us at payments@sharkfunded.com", 105, pageHeight - 30, { align: 'center' });
 
         // Legal/Computer Gen
         doc.setFontSize(8);

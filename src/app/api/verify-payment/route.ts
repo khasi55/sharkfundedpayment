@@ -112,6 +112,23 @@ export async function POST(request: Request) {
                 });
             } else {
                 console.log(`Amount mismatch for UTR ${utr}. Logged: ${foundPayment.amount}, Requested: ${amountStr}`);
+
+                // Record failure
+                // Record failure
+                // FIX: Use orderId (UUID) to find the transaction, as UTR might be a placeholder
+                if (orderId) {
+                    const failureReason = `Amount mismatch. Received: ${foundPayment.amount}, Expected: ${amountStr}`;
+                    const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+                    if (tx) {
+                        const newDetails = {
+                            ...tx.customer_details,
+                            failure_reason: failureReason,
+                            failed_attempt_utr: utr
+                        };
+                        await supabase.from('transactions').update({ status: 'failed', customer_details: newDetails }).eq('id', orderId);
+                    }
+                }
+
                 return NextResponse.json({
                     success: false,
                     message: `Amount mismatch. We received Rs. ${foundPayment.amount} but you are verifying for Rs. ${amountStr}. Please check the amount.`
@@ -139,6 +156,22 @@ export async function POST(request: Request) {
                 message: 'Payment verified (MOCKED)',
                 data: { utr, amount, status: 'verified' }
             });
+        }
+
+        if (orderId) {
+            if (orderId) {
+                const failureReason = 'Payment not found in webhook logs during verification.';
+                // FIX: Use 'id' not 'order_id' because orderId variable is the UUID
+                const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+                if (tx) {
+                    const newDetails = {
+                        ...tx.customer_details,
+                        failure_reason: failureReason,
+                        failed_attempt_utr: utr
+                    };
+                    await supabase.from('transactions').update({ status: 'failed', customer_details: newDetails }).eq('id', orderId);
+                }
+            }
         }
 
         return NextResponse.json({ success: false, message: 'Payment not found yet. Order Cancelled.' });
