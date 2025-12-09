@@ -184,27 +184,19 @@ export default function PaymentPageContent() {
 
         setState(prev => ({ ...prev, step: 'verifying', error: '' }));
 
-        // 1. Check if UTR is already used
+        // 1. Check if UTR is already used (Secure API Check)
         try {
-            const { data: existingTxn, error: checkError } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('utr', state.utr)
-                .eq('status', 'verified')
-                .single();
+            const checkResponse = await axios.post('/api/check-utr', { utr: state.utr });
 
-            if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "Row not found"
-                console.error('Error checking UTR:', checkError);
-                setState(prev => ({ ...prev, step: 'failed', error: 'Error checking transaction status' }));
+            if (checkResponse.data.exists) {
+                setState(prev => ({ ...prev, step: 'failed', error: checkResponse.data.message }));
                 return;
             }
-
-            if (existingTxn) {
-                setState(prev => ({ ...prev, step: 'failed', error: 'This UTR has already been used for a verified payment.' }));
-                return;
-            }
-        } catch (err) {
-            console.error('Unexpected error checking UTR:', err);
+        } catch (err: any) {
+            console.error('Error checking UTR:', err);
+            // Fallback: If network error, we probably shouldn't proceed cleanly, but let's show the error.
+            setState(prev => ({ ...prev, step: 'failed', error: err.response?.data?.error || 'Error validating transaction status. Please try again.' }));
+            return;
         }
 
         //  Check every 5 seconds for up to 2 minutes (24 attempts)
