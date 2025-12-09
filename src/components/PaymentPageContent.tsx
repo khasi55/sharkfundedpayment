@@ -285,7 +285,18 @@ export default function PaymentPageContent() {
                     setState(prev => ({ ...prev, step: 'verified' }));
                     return { stop: true }; // Stop polling
                 } else {
-                    // Not found yet
+                    // Failure case
+                    // Check if it's a critical error (like amount mismatch) or just "not found yet"
+                    const message = response.data.message || '';
+                    if (message.includes('Amount mismatch') || message.includes('No webhook log found')) {
+                        // For "Amount mismatch", we should fail immediately so user can see it
+                        if (message.includes('Amount mismatch')) {
+                            setState(prev => ({ ...prev, step: 'failed', error: message }));
+                            return { stop: true };
+                        }
+                    }
+
+                    // Not found yet (and not a mismatch), continue polling
                     if (attempts >= maxAttempts) {
                         // Switch to manual upload instead of failed
                         setState(prev => ({ ...prev, step: 'manual_upload', error: '' }));
