@@ -1,6 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Clock, CheckCircle2, Copy, AlertCircle, Lock } from 'lucide-react';
+import { Clock, CheckCircle2, Copy, AlertCircle, Lock, ArrowDown } from 'lucide-react';
 import { PaymentState } from './types';
 import { formatTime } from './utils';
 
@@ -48,6 +48,14 @@ export default function PaymentQRSection({
                     </p>
                 </div>
 
+                {/* Mobile Scroll Hint - High Priority Visibility */}
+                <div className="mb-4 md:hidden flex justify-center animate-bounce">
+                    <div className="flex items-center gap-2 bg-indigo-50 px-4 py-1.5 rounded-full border border-indigo-100">
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wide">Scroll Down to Enter UTR</span>
+                        <ArrowDown size={14} className="text-indigo-600" />
+                    </div>
+                </div>
+
                 {/* QR Code Card - Compacted */}
                 <div
                     className="p-4 bg-white rounded-2xl border border-slate-100 shadow-lg shadow-indigo-100/50 mb-5 cursor-pointer hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-0.5 transition-all duration-300 relative group"
@@ -82,6 +90,17 @@ export default function PaymentQRSection({
                     <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
                 </div>
 
+                {/* Amount Display - Compacted */}
+                <div
+                    className="mt-2 flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
+                    onClick={() => copyToClipboard(state.amount || '')}
+                >
+                    <span className="text-slate-400 font-medium">Amount:</span>
+                    <span className="font-mono font-bold text-slate-900 group-hover:text-[#635BFF] transition-colors">₹{state.amount}</span>
+                    <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
+                </div>
+
+
                 {/* Payment Apps Grid - Fixed Sizes */}
                 <div className="mt-6 flex flex-col items-center gap-3">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Supported Apps</p>
@@ -93,6 +112,7 @@ export default function PaymentQRSection({
                         <img src="https://static.cdnlogo.com/logos/g/80/google-pay.png" alt="Google Pay" className="h-20 object-contain" />
                     </div>
                 </div>
+
             </div>
 
             {/* UTR Input Section - Compacted */}

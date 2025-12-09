@@ -242,22 +242,34 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
 
     if (currentStep === 'expired') {
         return (
-            <StatusCard glowColor="indigo">
-                <div className="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <Clock size={40} />
+            <StatusCard glowColor="amber">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-amber-200/50 rounded-full blur-xl opacity-0 animate-pulse-slow"></div>
+                    <div className="w-20 h-20 bg-gradient-to-br from-amber-50 to-amber-100 text-amber-500 rounded-full flex items-center justify-center relative z-10 shadow-lg border border-white">
+                        <Clock size={40} />
+                    </div>
                 </div>
-                <div className="text-center">
-                    <h2 className="text-xl font-bold text-slate-900">Session Expired</h2>
-                    <p className="text-slate-500 text-sm mt-1">Please start over.</p>
+
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Session Expired</h2>
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto">
+                        Your payment session has timed out. Please start over to secure your order.
+                    </p>
                 </div>
-                {setState && (
-                    <button
-                        onClick={() => setState(prev => ({ ...prev, step: 'details', error: '' }))}
-                        className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-indigo-500/20"
-                    >
-                        Start Over
-                    </button>
-                )}
+
+                <div className="w-full space-y-3">
+                    {setState && (
+                        <button
+                            onClick={() => {
+                                setState(prev => ({ ...prev, step: 'details', error: '', amount: prev.amount, name: prev.name, email: prev.email }));
+                                setAutoRedirectTimer(5); // Reset any timers if needed
+                            }}
+                            className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-indigo-500/20 active:scale-[0.98]"
+                        >
+                            Start Over
+                        </button>
+                    )}
+                </div>
             </StatusCard>
         );
     }
