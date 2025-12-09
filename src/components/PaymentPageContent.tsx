@@ -209,7 +209,7 @@ export default function PaymentPageContent() {
 
         //  Check every 5 seconds for up to 2 minutes (24 attempts)
         let attempts = 0;
-        const maxAttempts = 1;
+        const maxAttempts = 24;
         const pollInterval = 5000; // 5 seconds
 
         const checkPayment = async () => {
