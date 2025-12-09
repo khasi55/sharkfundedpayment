@@ -199,13 +199,12 @@ export default function PaymentPageContent() {
 
         //  Check every 5 seconds for up to 2 minutes (24 attempts)
         let attempts = 0;
-        const maxAttempts = 24;
+        const maxAttempts = 1;
         const pollInterval = 5000; // 5 seconds
 
         const checkPayment = async () => {
             try {
                 attempts++;
-
 
                 const response = await axios.post('/api/verify-payment', {
                     utr: state.utr,
@@ -213,6 +212,11 @@ export default function PaymentPageContent() {
                     orderId: sessionId, // Pass Session ID to backend for tracking
                     email: state.email,
                     name: state.name
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
                 });
 
                 if (response.data.success) {
@@ -277,32 +281,43 @@ export default function PaymentPageContent() {
                     }
 
                     setState(prev => ({ ...prev, step: 'verified' }));
-                    return true; // Stop polling
+                    return { stop: true }; // Stop polling
                 } else {
                     // Not found yet
                     if (attempts >= maxAttempts) {
                         // Switch to manual upload instead of failed
                         setState(prev => ({ ...prev, step: 'manual_upload', error: '' }));
-                        return true; // Stop polling
+                        return { stop: true }; // Stop polling
                     }
-                    return false; // Continue polling
+                    return { stop: false, delay: pollInterval }; // Continue polling
                 }
             } catch (err: any) {
                 console.error('Verification error:', err);
+                // Handle 429 Too Many Requests specifically
+                if (err.response && err.response.status === 429) {
+                    console.warn('Rate limit hit, backing off...');
+                    // Return check to keep polling but with longer delay (e.g. 10 seconds)
+                    if (attempts >= maxAttempts) {
+                        setState(prev => ({ ...prev, step: 'manual_upload', error: 'Server busy, switching to manual upload.' }));
+                        return { stop: true };
+                    }
+                    return { stop: false, delay: 10000 };
+                }
+
                 // If it's a network error, we might want to keep retrying, but for now let's fail after max attempts
                 if (attempts >= maxAttempts) {
                     setState(prev => ({ ...prev, step: 'failed', error: err.response?.data?.message || 'Server error during verification' }));
-                    return true;
+                    return { stop: true };
                 }
-                return false;
+                return { stop: false, delay: pollInterval };
             }
         };
 
         // Start polling loop
         const poll = async () => {
-            const stop = await checkPayment();
-            if (!stop) {
-                setTimeout(poll, pollInterval);
+            const result = await checkPayment();
+            if (!result.stop) {
+                setTimeout(poll, result.delay || pollInterval);
             }
         };
 

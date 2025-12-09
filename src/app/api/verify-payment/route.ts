@@ -16,12 +16,13 @@ export async function POST(request: Request) {
     try {
         // Rate Limiting
         const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-        const rateLimit = await checkRateLimit(ip, 'verify-payment', 10, 60); // 10 requests per minute
+        // increased from 10 to 60 to allow polling (e.g. every 5s = 12/min)
+        const rateLimit = await checkRateLimit(ip, 'verify-payment', 60, 60);
 
         if (!rateLimit.success) {
             return NextResponse.json(
                 { success: false, message: 'Too many requests. Please try again later.' },
-                { status: 429 }
+                { status: 429, headers: { 'Content-Type': 'application/json' } }
             );
         }
 
