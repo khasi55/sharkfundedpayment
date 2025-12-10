@@ -401,7 +401,8 @@ export default function PaymentPageContent() {
                         utr: state.utr || `MANUAL-${Date.now()}`,
                         amount: state.amount,
                         status: 'pending_manual_verification',
-                        customer_details: { name: state.name, email: state.email }
+                        status: 'pending_manual_verification',
+                        customer_details: { name: state.name, email: state.email, reference_id: referenceId, callback_url: callbackUrl, success_url: successUrl, failed_url: failedUrl }
                     })
                     .or(`id.eq.${sessionId},session_id.eq.${sessionId}`)
                     .select()
@@ -419,7 +420,8 @@ export default function PaymentPageContent() {
                         amount: state.amount,
                         session_id: sessionId, // Store UUID in session_id
                         status: 'pending_manual_verification',
-                        customer_details: { name: state.name, email: state.email }
+                        status: 'pending_manual_verification',
+                        customer_details: { name: state.name, email: state.email, reference_id: referenceId, callback_url: callbackUrl, success_url: successUrl, failed_url: failedUrl }
                         // screenshot_url is initially null
                     })
                     .select()
