@@ -45,6 +45,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
+        console.log('Create Order Payload:', JSON.stringify(body, null, 2));
 
         const validation = CreateOrderSchema.safeParse(body);
 
