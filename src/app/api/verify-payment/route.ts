@@ -126,11 +126,33 @@ export async function POST(request: Request) {
 
 
                 // Fetch transaction details if needed (mostly for fallback if email not provided)
-                const { data: transaction } = await supabase
-                    .from('transactions')
-                    .select('*')
-                    .eq('utr', utr)
-                    .single();
+                // Fetch transaction details
+                // Priority: Lookup by orderId (UUID) if provided (links to initial create-order)
+                // Fallback: Lookup by UTR (legacy or direct)
+                let transaction = null;
+
+                if (orderId) {
+                    const { data: txByOrder } = await supabase
+                        .from('transactions')
+                        .select('*')
+                        .eq('id', orderId)
+                        .maybeSingle();
+
+                    if (txByOrder) {
+                        transaction = txByOrder;
+                        // OPTIONAL: Update the placeholder UTR to the real verified UTR now?
+                        // For now, let's just ensure we have the data for the webhook.
+                    }
+                }
+
+                if (!transaction) {
+                    const { data: txByUtr } = await supabase
+                        .from('transactions')
+                        .select('*')
+                        .eq('utr', utr)
+                        .maybeSingle();
+                    transaction = txByUtr;
+                }
 
                 await handleEmailSending(transaction);
                 await handleWebhookTrigger(transaction, 'verified');
