@@ -35,6 +35,8 @@ export default function PaymentPageContent() {
     const [officialOrderId, setOfficialOrderId] = useState<string>(''); // This will be the SF-2025-X ID
     const [callbackUrl, setCallbackUrl] = useState<string>(''); // [NEW] callback url from DB
     const [referenceId, setReferenceId] = useState<string>(''); // [NEW] reference ID from DB
+    const [successUrl, setSuccessUrl] = useState<string>(''); // [NEW] success redirect url
+    const [failedUrl, setFailedUrl] = useState<string>(''); // [NEW] failed redirect url
     const [copied, setCopied] = useState(false);
     const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
     const [verificationStatus, setVerificationStatus] = useState('Connecting to bank...');
@@ -90,6 +92,8 @@ export default function PaymentPageContent() {
                         if (data.order_id) setOfficialOrderId(data.order_id);
                         if (data.customer_details?.callback_url) setCallbackUrl(data.customer_details.callback_url);
                         if (data.customer_details?.reference_id) setReferenceId(data.customer_details.reference_id);
+                        if (data.customer_details?.success_url) setSuccessUrl(data.customer_details.success_url);
+                        if (data.customer_details?.failed_url) setFailedUrl(data.customer_details.failed_url);
                     }
                 } catch (err) {
                     console.error("Error fetching order:", err);
@@ -795,6 +799,8 @@ export default function PaymentPageContent() {
                                     amount={state.amount}
                                     orderId={officialOrderId || sessionId}
                                     callbackUrl={callbackUrl || searchParams.get('callback_url')}
+                                    successUrl={successUrl}
+                                    failedUrl={failedUrl}
                                     referenceId={referenceId}
                                     generateInvoice={generateInvoice}
                                     state={state}

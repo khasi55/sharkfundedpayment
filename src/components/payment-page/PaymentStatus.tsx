@@ -2,7 +2,8 @@ import React from 'react';
 import { CheckCircle2, Clock, Download, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { PaymentStatusProps } from './types';
 
-export default function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId, referenceId }: PaymentStatusProps) {
+export default function PaymentStatus(props: PaymentStatusProps) {
+    const { step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId, referenceId } = props;
 
     const [autoRedirectTimer, setAutoRedirectTimer] = React.useState(5);
 
@@ -13,8 +14,20 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
     const currentOrderId = officialOrderId || orderId || 'N/A';
 
     const handleReturnToMerchant = React.useCallback(() => {
-        if (callbackUrl) {
-            const url = new URL(callbackUrl);
+        // Hardcoded Redirect URLs as per requirement
+        let targetUrl = '';
+
+        if (currentStep === 'verified') {
+            targetUrl = 'https://www.sharkfunded.com/thank-you';
+        } else if (currentStep === 'failed') {
+            targetUrl = 'https://dashboard.sharkfunded.com/thankyoupagefailed';
+        } else if (callbackUrl) {
+            // Fallback to callbackUrl if somehow neither (shouldn't happen for final states)
+            targetUrl = callbackUrl;
+        }
+
+        if (targetUrl) {
+            const url = new URL(targetUrl);
 
             let statusParam = 'pending';
             if (currentStep === 'verified') statusParam = 'success';
@@ -28,9 +41,10 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
             if (referenceId) url.searchParams.set('reference_id', referenceId);
             window.location.href = url.toString();
         } else {
+            // No URL to go to, just reload (or maybe go home?)
             window.location.reload();
         }
-    }, [callbackUrl, currentStep, currentOrderId, state]);
+    }, [callbackUrl, currentStep, currentOrderId, state, referenceId]);
 
     // Auto-redirect effect
     React.useEffect(() => {

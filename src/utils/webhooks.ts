@@ -13,23 +13,33 @@ interface WebhookPayload {
 export const sendMerchantWebhook = async (url: string, payload: WebhookPayload) => {
     if (!url) return;
 
-    console.log(`Sending callback output (JSON) to ${url}`, payload);
-
     try {
-        // Send webhook with a timeout of 10 seconds
-        const response = await axios.post(url, payload, {
+        console.log(`Sending callback (POST) to ${url}`, payload);
+        // 1. Try POST
+        await axios.post(url, payload, {
             timeout: 10000,
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'SharkFunded-Callback/1.0'
-            }
+            headers: { 'Content-Type': 'application/json', 'User-Agent': 'SharkFunded-Callback/1.0' }
         });
-
-        console.log(`Callback sent successfully to ${url}. Status: ${response.status}`);
+        console.log(`Callback (POST) sent successfully to ${url}`);
         return true;
     } catch (error: any) {
-        console.error(`Failed to send callback to ${url}:`, error.message);
-        // We don't throw here to prevent disrupting the main flow
-        return false;
+        // 2. If POST fails (especially 405), Try GET
+        console.warn(`Callback (POST) failed: ${error.message}. Retrying with GET...`);
+
+        try {
+            const params = new URLSearchParams(payload as any).toString();
+            const getUrl = `${url}?${params}`;
+            console.log(`Sending callback (GET) to ${getUrl}`);
+
+            await axios.get(getUrl, {
+                timeout: 10000,
+                headers: { 'User-Agent': 'SharkFunded-Callback/1.0' }
+            });
+            console.log(`Callback (GET) sent successfully to ${url}`);
+            return true;
+        } catch (getError: any) {
+            console.error(`Failed to send callback (BOTH POST & GET) to ${url}:`, getError.message);
+            return false;
+        }
     }
 };
