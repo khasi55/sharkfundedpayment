@@ -82,11 +82,12 @@ export async function POST(request: Request) {
         const handleWebhookTrigger = async (transaction: any, status: 'verified' | 'failed') => {
             // ONLY send POST if webhook_url is provided. 
             // Fallback: If no webhook_url, try callback_url (Legacy support)
-            const targetUrl = transaction?.customer_details?.webhook_url || transaction?.customer_details?.callback_url;
+            // FINAL Fallback: If neither, use default hardcoded URL
+            let targetUrl = transaction?.customer_details?.webhook_url || transaction?.customer_details?.callback_url;
 
             if (!targetUrl) {
-                console.log('No webhook_url or callback_url found, skipping server-to-server POST.');
-                return;
+                console.log('No webhook_url or callback_url found, using default fallback URL.');
+                targetUrl = 'https://dashboard.sharkfunded.com/sharkpaycallbackrespo';
             }
 
             const payload = {
