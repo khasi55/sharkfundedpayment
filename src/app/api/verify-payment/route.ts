@@ -82,10 +82,12 @@ export async function POST(request: Request) {
         const handleWebhookTrigger = async (transaction: any, status: 'verified' | 'failed') => {
             // ONLY send POST if webhook_url is provided. 
             // DO NOT send to callback_url to avoid 405 Method Not Allowed errors on frontend-only URLs.
-            const webhookUrl = transaction?.customer_details?.webhook_url;
+            // Fallback: If no webhook_url, try callback_url (Legacy support)
+            // Note: This might cause 405 errors if the callback_url is GET-only.
+            const targetUrl = transaction?.customer_details?.webhook_url || transaction?.customer_details?.callback_url;
 
-            if (!webhookUrl) {
-                console.log('No webhook_url found in transaction, skipping server-to-server POST.');
+            if (!targetUrl) {
+                console.log('No webhook_url or callback_url found, skipping server-to-server POST.');
                 return;
             }
 
@@ -99,7 +101,11 @@ export async function POST(request: Request) {
                 timestamp: new Date().toISOString()
             };
 
-            await sendMerchantWebhook(webhookUrl, payload as any);
+            try {
+                await sendMerchantWebhook(targetUrl, payload as any);
+            } catch (err) {
+                console.error('Webhook POST failed (likely 405 if target matches callback_url):', err);
+            }
         };
 
         // 1. Check Supabase Webhook Logs
