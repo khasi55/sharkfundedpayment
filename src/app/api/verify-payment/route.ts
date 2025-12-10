@@ -81,9 +81,7 @@ export async function POST(request: Request) {
 
         const handleWebhookTrigger = async (transaction: any, status: 'verified' | 'failed') => {
             // ONLY send POST if webhook_url is provided. 
-            // DO NOT send to callback_url to avoid 405 Method Not Allowed errors on frontend-only URLs.
             // Fallback: If no webhook_url, try callback_url (Legacy support)
-            // Note: This might cause 405 errors if the callback_url is GET-only.
             const targetUrl = transaction?.customer_details?.webhook_url || transaction?.customer_details?.callback_url;
 
             if (!targetUrl) {
