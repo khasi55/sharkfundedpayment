@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle2, Clock, Download, AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
 import { PaymentStatusProps } from './types';
 
-export default function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId }: PaymentStatusProps) {
+export default function PaymentStatus({ step, amount, orderId, callbackUrl, state, setState, checkStatus, generateInvoice, officialOrderId, referenceId }: PaymentStatusProps) {
 
     const [autoRedirectTimer, setAutoRedirectTimer] = React.useState(5);
 
@@ -24,6 +24,8 @@ export default function PaymentStatus({ step, amount, orderId, callbackUrl, stat
             url.searchParams.set('orderId', currentOrderId);
             // utr might be in state
             if (state?.utr) url.searchParams.set('utr', state.utr);
+            // Append referenceId if it exists
+            if (referenceId) url.searchParams.set('reference_id', referenceId);
             window.location.href = url.toString();
         } else {
             window.location.reload();

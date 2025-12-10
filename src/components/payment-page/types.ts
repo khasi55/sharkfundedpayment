@@ -26,6 +26,7 @@ export interface PaymentStatusProps {
     amount?: string;
     orderId?: string;
     callbackUrl?: string | null;
+    referenceId?: string; // [NEW] Pass reference ID to status page
 
     // Legacy/Full props
     state?: PaymentState;
