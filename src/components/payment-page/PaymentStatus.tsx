@@ -18,7 +18,7 @@ export default function PaymentStatus(props: PaymentStatusProps) {
         let targetUrl = '';
 
         if (currentStep === 'verified') {
-            targetUrl = 'https://www.sharkfunded.com/thank-you';
+            targetUrl = 'https://dashboard.sharkfunded.com/thankyoupage';
         } else if (currentStep === 'failed') {
             targetUrl = 'https://dashboard.sharkfunded.com/thankyoupagefailed';
         } else if (callbackUrl) {
@@ -27,19 +27,8 @@ export default function PaymentStatus(props: PaymentStatusProps) {
         }
 
         if (targetUrl) {
-            const url = new URL(targetUrl);
-
-            let statusParam = 'pending';
-            if (currentStep === 'verified') statusParam = 'success';
-            else if (currentStep === 'failed') statusParam = 'failed';
-
-            url.searchParams.set('status', statusParam);
-            url.searchParams.set('orderId', currentOrderId);
-            // utr might be in state
-            if (state?.utr) url.searchParams.set('utr', state.utr);
-            // Append referenceId if it exists
-            if (referenceId) url.searchParams.set('reference_id', referenceId);
-            window.location.href = url.toString();
+            // DIRECT Redirect - No Data Appended (User Request)
+            window.location.href = targetUrl;
         } else {
             // No URL to go to, just reload (or maybe go home?)
             window.location.reload();

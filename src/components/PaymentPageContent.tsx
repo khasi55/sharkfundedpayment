@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
-import { getUpiConfigForTransaction } from '@/config/upiConfig';
+import { getUpiConfigForTransaction, UPI_CONFIGS } from '@/config/upiConfig';
+
+
 import { Check, ShieldCheck, Lock, CreditCard, Shield, Search, ArrowLeft } from 'lucide-react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { generateInvoice } from '@/utils/invoiceGenerator';
@@ -41,8 +43,26 @@ export default function PaymentPageContent() {
     const [timeLeft, setTimeLeft] = useState(15 * 60); // 15 minutes in seconds
     const [verificationStatus, setVerificationStatus] = useState('Connecting to bank...');
 
-    // Dynamic UPI Config based on session
-    const { vpa: UPI_ID, merchantName: MERCHANT_NAME } = getUpiConfigForTransaction(sessionId);
+    // Dynamic UPI Config based on session + Toggle State
+    const [upiIndex, setUpiIndex] = useState<number>(0);
+    const [currentUpiConfig, setCurrentUpiConfig] = useState(getUpiConfigForTransaction(sessionId || urlSessionId || ''));
+
+    useEffect(() => {
+        // Sync initial load
+        const initialConfig = getUpiConfigForTransaction(sessionId || urlSessionId || '');
+        setCurrentUpiConfig(initialConfig);
+        const idx = UPI_CONFIGS.findIndex(c => c.vpa === initialConfig.vpa);
+        if (idx !== -1) setUpiIndex(idx);
+    }, []); // Run ONCE on mount
+
+    const handleToggleUpi = () => {
+        const nextIndex = (upiIndex + 1) % UPI_CONFIGS.length;
+        setUpiIndex(nextIndex);
+        setCurrentUpiConfig(UPI_CONFIGS[nextIndex]);
+    };
+
+    const UPI_ID = currentUpiConfig.vpa;
+    const MERCHANT_NAME = currentUpiConfig.merchantName;
 
     // Effect to handle Order Fetching (Secure) or Auto-fill (Legacy)
     useEffect(() => {
@@ -782,6 +802,7 @@ export default function PaymentPageContent() {
                                 upiId={UPI_ID}
                                 copyToClipboard={copyToClipboard}
                                 copied={copied}
+                                handleToggleUpi={handleToggleUpi}
                             />
                         )}
 

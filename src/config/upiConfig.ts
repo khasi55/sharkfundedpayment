@@ -5,6 +5,7 @@ export interface UpiConfig {
 
 export const UPI_CONFIGS: UpiConfig[] = [
     { vpa: 'jaspprosolutions@idbi', merchantName: 'Shark Funded' },
+    { vpa: '9481649428@ptyes', merchantName: 'Shark Funded' },
 ];
 
 export const getUpiConfigForTransaction = (sessionId: string): UpiConfig => {

@@ -14,6 +14,7 @@ interface PaymentQRSectionProps {
     upiId: string;
     copyToClipboard: (text: string) => void;
     copied: boolean;
+    handleToggleUpi?: () => void; // Optional to not break old usages immediately
 }
 
 export default function PaymentQRSection({
@@ -25,7 +26,8 @@ export default function PaymentQRSection({
     merchantName,
     upiId,
     copyToClipboard,
-    copied
+    copied,
+    handleToggleUpi
 }: PaymentQRSectionProps) {
     return (
         <div className="space-y-6 animate-fade-in">
@@ -81,13 +83,24 @@ export default function PaymentQRSection({
                     )}
                 </div>
 
-                {/* UPI ID Pill - Compacted */}
-                <div
-                    className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
-                    onClick={() => copyToClipboard(upiId)}
-                >
-                    <span className="font-mono font-semibold group-hover:text-[#635BFF] transition-colors">{upiId}</span>
-                    <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
+                {/* UPI ID Pill - Compacted + Change Button */}
+                <div className="flex items-center gap-2">
+                    <div
+                        className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
+                        onClick={() => copyToClipboard(upiId)}
+                    >
+                        <span className="font-mono font-semibold group-hover:text-[#635BFF] transition-colors">{upiId}</span>
+                        <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
+                    </div>
+
+                    {handleToggleUpi && (
+                        <button
+                            onClick={handleToggleUpi}
+                            className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-lg hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
+                        >
+                            Change
+                        </button>
+                    )}
                 </div>
 
                 {/* Amount Display - Compacted */}
