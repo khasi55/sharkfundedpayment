@@ -67,12 +67,14 @@ export async function POST(request: Request) {
                 const payload = {
                     event: 'payment.success',
                     orderId: orderId,
-                    reference_id: transaction.customer_details?.reference_id,
+                    reference_id: transaction.customer_details?.reference_id || transaction.customer_details?.referenceId || null,
                     utr: utr,
                     amount: amount,
                     status: 'verified',
                     timestamp: new Date().toISOString()
                 };
+
+                console.log('Sending Webhook Payload:', JSON.stringify(payload, null, 2));
 
                 try {
                     await sendMerchantWebhook(webhookUrl, payload as any);
