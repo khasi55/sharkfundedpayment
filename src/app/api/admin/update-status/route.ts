@@ -56,7 +56,13 @@ export async function POST(request: Request) {
             }
 
             // 3. Send Webhook (Callback)
-            const webhookUrl = transaction.customer_details?.webhook_url || transaction.customer_details?.callback_url;
+            let webhookUrl = transaction.customer_details?.webhook_url || transaction.customer_details?.callback_url;
+
+            if (!webhookUrl) {
+                console.log('No webhook_url or callback_url found, using default fallback URL.');
+                webhookUrl = 'https://dashboard.sharkfunded.com/sharkpaycallbackrespo';
+            }
+
             if (webhookUrl) {
                 const payload = {
                     event: 'payment.success',
