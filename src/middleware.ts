@@ -4,6 +4,19 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
+    // ------------------------------------------------------------------------
+    // 1. GLOBAL MAINTENANCE MODE CHECK
+    // ------------------------------------------------------------------------
+    // Bypass maintenance for the maintenance page itself, assets, and API routes if needed
+    if (process.env.MAINTENANCE_MODE === 'true') {
+        if (!path.startsWith('/maintenance') && !path.startsWith('/api/') && !path.startsWith('/_next')) {
+            return NextResponse.redirect(new URL('/maintenance', request.url));
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 2. ADMIN AUTH CHECK
+    // ------------------------------------------------------------------------
     // Define paths that require authentication
     if (path.startsWith('/sharkfunded2logintoadminwithpermission')) {
 
@@ -51,5 +64,9 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/sharkfunded2logintoadminwithpermission/:path*'],
+    // Match all request paths except for the ones starting with:
+    // - _next/static (static files)
+    // - _next/image (image optimization files)
+    // - favicon.ico (favicon file)
+    matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
