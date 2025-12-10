@@ -114,9 +114,10 @@ export async function POST(request: Request) {
             .eq('utr', utr)
             .order('created_at', { ascending: false })
             .limit(1)
-            .single();
+            .limit(1)
+            .maybeSingle();
 
-        if (error && error.code !== 'NONE') { // NONE means no rows found
+        if (error) {
             console.error('Supabase error during verification:', error);
         }
 
