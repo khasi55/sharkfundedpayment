@@ -8,7 +8,8 @@ const CreateOrderSchema = z.object({
     name: z.string().min(2, 'Name must be at least 2 characters'),
     email: z.string().email('Invalid email address'),
     callback_url: z.string().url().optional().or(z.literal('')),
-    reference_id: z.string().optional(), // [NEW] Allow external reference ID
+    reference_id: z.string().optional(), // Allow external reference ID
+    webhook_url: z.string().url().optional().or(z.literal('')), // [NEW] Webhook URL for server-to-server POST
 });
 
 export async function POST(request: Request) {
@@ -52,7 +53,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { amount, name, email, callback_url, reference_id } = validation.data;
+        const { amount, name, email, callback_url, reference_id, webhook_url } = validation.data;
 
         // Create a new transaction record
         // We use the 'id' (UUID) as the session identifier
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
                 {
                     amount: amount,
                     status: 'pending_payment', // Initial status
-                    customer_details: { name, email, callback_url, reference_id }, // Store reference_id
+                    customer_details: { name, email, callback_url, reference_id, webhook_url }, // Store webhook_url
                     utr: `ORDER-${Date.now()}-${Math.random().toString(36).substring(7)}`, // Placeholder UTR
                     // order_id is null initially (generated after verification)
                 },

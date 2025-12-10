@@ -79,10 +79,15 @@ export async function POST(request: Request) {
             console.log('--- Email Handle End ---');
         };
 
-        const handleCallbackTrigger = async (transaction: any, status: 'verified' | 'failed') => {
-            // Use callback_url as the webhook target
-            const callbackUrl = transaction?.customer_details?.callback_url;
-            if (!callbackUrl) return;
+        const handleWebhookTrigger = async (transaction: any, status: 'verified' | 'failed') => {
+            // ONLY send POST if webhook_url is provided. 
+            // DO NOT send to callback_url to avoid 405 Method Not Allowed errors on frontend-only URLs.
+            const webhookUrl = transaction?.customer_details?.webhook_url;
+
+            if (!webhookUrl) {
+                console.log('No webhook_url found in transaction, skipping server-to-server POST.');
+                return;
+            }
 
             const payload = {
                 event: status === 'verified' ? 'payment.success' : 'payment.failed',
@@ -94,7 +99,7 @@ export async function POST(request: Request) {
                 timestamp: new Date().toISOString()
             };
 
-            await sendMerchantWebhook(callbackUrl, payload as any);
+            await sendMerchantWebhook(webhookUrl, payload as any);
         };
 
         // 1. Check Supabase Webhook Logs
@@ -123,7 +128,7 @@ export async function POST(request: Request) {
                     .single();
 
                 await handleEmailSending(transaction);
-                await handleCallbackTrigger(transaction, 'verified');
+                await handleWebhookTrigger(transaction, 'verified');
 
                 return NextResponse.json({
                     success: true,
@@ -147,7 +152,7 @@ export async function POST(request: Request) {
                         };
                         await supabase.from('transactions').update({ status: 'failed', customer_details: newDetails }).eq('id', orderId);
                         // Trigger failed callback (webhook style)
-                        await handleCallbackTrigger({ ...tx, amount: foundPayment.amount, order_id: 'N/A' }, 'failed');
+                        await handleWebhookTrigger({ ...tx, amount: foundPayment.amount, order_id: 'N/A' }, 'failed');
                     }
                 }
 
@@ -172,7 +177,7 @@ export async function POST(request: Request) {
             };
 
             await handleEmailSending(mockTransaction);
-            await handleCallbackTrigger(mockTransaction, 'verified');
+            await handleWebhookTrigger(mockTransaction, 'verified');
 
             return NextResponse.json({
                 success: true,
