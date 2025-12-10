@@ -99,6 +99,16 @@ export default function PaymentPageContent() {
                                 step: 'failed',
                                 error: 'Payment verification rejected by admin.'
                             }));
+                        } else if (data.status === 'failed') {
+                            // Payment failed (e.g. Amount Mismatch)
+                            setState(prev => ({
+                                ...prev,
+                                amount: data.amount.toString(),
+                                name: data.customer_details?.name || '',
+                                email: data.customer_details?.email || '',
+                                step: 'failed',
+                                error: data.customer_details?.failure_reason || 'Payment failed.'
+                            }));
                         } else {
                             // Pending payment
                             setState(prev => ({

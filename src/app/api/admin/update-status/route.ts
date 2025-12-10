@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
+import { sendMerchantWebhook } from '@/utils/webhooks';
 
 export async function POST(request: Request) {
     try {
@@ -51,7 +52,29 @@ export async function POST(request: Request) {
                     console.error('Error sending email:', emailError);
                 }
             } else {
+                console.log(`No email found for transaction ${transactionId}, skipping email.`);
+            }
 
+            // 3. Send Webhook (Callback)
+            const webhookUrl = transaction.customer_details?.webhook_url || transaction.customer_details?.callback_url;
+            if (webhookUrl) {
+                const payload = {
+                    event: 'payment.success',
+                    orderId: orderId,
+                    reference_id: transaction.customer_details?.reference_id,
+                    utr: utr,
+                    amount: amount,
+                    status: 'verified',
+                    timestamp: new Date().toISOString()
+                };
+
+                try {
+                    await sendMerchantWebhook(webhookUrl, payload as any);
+                } catch (webhookError) {
+                    console.error('Error sending webhook:', webhookError);
+                }
+            } else {
+                console.log('No webhook_url found, skipping webhook.');
             }
         }
 
