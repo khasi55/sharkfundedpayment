@@ -23,6 +23,8 @@ export default function PaymentPageContent() {
     const queryAmount = searchParams.get('amount');
     const queryName = searchParams.get('name');
     const queryEmail = searchParams.get('email');
+    const queryReferenceId = searchParams.get('reference_id');
+    const queryCallbackUrl = searchParams.get('callback_url');
 
     const [state, setState] = useState<PaymentState>({
         step: 'details',
@@ -150,13 +152,15 @@ export default function PaymentPageContent() {
                         email: queryEmail
                     }));
                 }
+                if (queryReferenceId) setReferenceId(queryReferenceId);
+                if (queryCallbackUrl) setCallbackUrl(queryCallbackUrl);
             }
 
             setSessionId(urlSessionId || '');
         };
 
         initializePayment();
-    }, [queryAmount, queryName, queryEmail, urlSessionId]);
+    }, [queryAmount, queryName, queryEmail, urlSessionId, queryReferenceId, queryCallbackUrl]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setInterval>;
