@@ -122,8 +122,10 @@ export async function POST(request: Request) {
         }
 
         if (foundPayment) {
-            // Check amount (allow small difference)
-            if (parseFloat(foundPayment.amount) === parseFloat(amountStr)) {
+            // Check amount (allow small difference due to rounding)
+            // Fix: User reported .79 vs .80 mismatch. We must allow tolerance.
+            const diff = Math.abs(parseFloat(foundPayment.amount) - parseFloat(amountStr));
+            if (diff <= 1.0) {
 
 
                 // Fetch transaction details if needed (mostly for fallback if email not provided)

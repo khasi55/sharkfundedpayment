@@ -113,6 +113,14 @@ export default function PaymentQRSection({
                     <Copy size={12} className="text-slate-400 group-hover:text-[#635BFF] transition-colors" />
                 </div>
 
+                {/* Exact Amount Warning */}
+                <div className="mt-3 px-4 py-2 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-2 max-w-[300px] animate-pulse">
+                    <AlertCircle size={14} className="text-rose-600 shrink-0" />
+                    <p className="text-[11px] font-bold text-rose-700 leading-tight text-center">
+                        Pay EXACT amount (including decimals) or payment WILL FAIL.
+                    </p>
+                </div>
+
 
                 {/* Payment Apps Grid - Fixed Sizes */}
                 <div className="mt-6 flex flex-col items-center gap-3">
