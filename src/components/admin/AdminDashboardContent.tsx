@@ -319,6 +319,7 @@ const AdminDashboardContent: React.FC = () => {
                         formatTime={formatTime}
                         getStatusStyle={getStatusStyle}
                         setSelectedTransaction={setSelectedTransaction}
+                        initiateStatusUpdate={initiateStatusUpdate}
                     />
                 )}
 

@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Search, RefreshCw, FileJson, Calendar, Database, Eye } from 'lucide-react';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 interface ApiLog {
     id: string;
@@ -25,7 +28,7 @@ const ApiLogsTable = () => {
                 .from('api_logs')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(50); // Limit to last 50 for performance
+                .limit(500); // Limit to last 50 for performance
 
             if (error) throw error;
             setLogs(data || []);
