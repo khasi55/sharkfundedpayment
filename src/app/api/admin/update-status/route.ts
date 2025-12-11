@@ -119,6 +119,22 @@ export async function POST(request: Request) {
 
                 console.log('Sending Webhook Payload:', JSON.stringify(payload, null, 2));
 
+                // [NEW] Log Outgoing Webhook to Database
+                try {
+                    await supabase.from('api_logs').insert({
+                        endpoint: 'webhook-outbound',
+                        request_payload: payload,
+                        metadata: {
+                            target_url: webhookUrl,
+                            order_id: orderId,
+                            utr: utr,
+                            reference_id: referenceId
+                        }
+                    });
+                } catch (logError) {
+                    console.error('Failed to log outgoing webhook:', logError);
+                }
+
                 try {
                     await sendMerchantWebhook(webhookUrl, payload as any);
                 } catch (webhookError) {
