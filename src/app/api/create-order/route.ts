@@ -47,6 +47,14 @@ export async function POST(request: Request) {
         const body = await request.json();
         console.log('Create Order Payload:', JSON.stringify(body, null, 2));
 
+        // [DEBUG] Log to Database
+        await supabase.from('api_logs').insert({
+            endpoint: 'create-order',
+            ip_address: ip,
+            request_payload: body,
+            metadata: { key_id: keyId }
+        });
+
         const validation = CreateOrderSchema.safeParse(body);
 
         if (!validation.success) {
