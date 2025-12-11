@@ -12,8 +12,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Transaction ID and Status are required' }, { status: 400 });
         }
 
-
-
         // 1. Update Transaction Status
         const { data: transaction, error } = await supabase
             .from('transactions')
@@ -133,16 +131,16 @@ export async function POST(request: Request) {
                     console.error('Failed to log outgoing webhook:', logError);
                 }
 
-                // Fire-and-forget: Send webhook but don't wait for response
-                console.log('🚀 Starting webhook dispatch...');
-                (async () => {
-                    try {
-                        await sendMerchantWebhook(webhookUrl, payload as any);
-                        console.log('✅ Webhook sent successfully');
-                    } catch (webhookError) {
-                        console.error('❌ Error sending webhook:', webhookError);
-                    }
-                })();
+                // CRITICAL FIX: In Vercel/Next.js Serverless, we MUST 'await' the fetch.
+                // If we don't, the function terminates immediately and kills the background request.
+                console.log('🚀 Dispatching webhook (waiting for completion)...');
+                try {
+                    await sendMerchantWebhook(webhookUrl, payload as any);
+                    console.log('✅ Webhook sent and finished.');
+                } catch (webhookError) {
+                    // Swallow error so Admin UI still succeeds even if webhook times out
+                    console.error('⚠️ Webhook failed (likely timeout), but Order is Verified.', webhookError);
+                }
             } else {
                 console.log('No webhook_url found, skipping webhook.');
             }
