@@ -60,6 +60,7 @@ export async function POST(request: Request) {
             // This prevents issues where manual uploads might have overwritten customer_details.
             let webhookUrl = transaction.customer_details?.webhook_url || transaction.customer_details?.callback_url;
             let referenceId = transaction.customer_details?.reference_id || transaction.customer_details?.referenceId;
+            let originalPayload: any = {};
 
             // Try to find the original API log for this order
             const orderIdForLookup = transaction.order_id || transaction.session_id || transaction.id;
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
 
             if (apiLog && apiLog.request_payload) {
                 // Found the original payload! Use this as Source of Truth.
-                const originalPayload = apiLog.request_payload;
+                originalPayload = apiLog.request_payload;
                 console.log('Found original API log payload:', JSON.stringify(originalPayload));
 
                 // Prioritize values from the log
@@ -110,7 +111,10 @@ export async function POST(request: Request) {
                     utr: utr,
                     amount: amount,
                     status: 'verified',
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
+                    name: name,
+                    email: email,
+                    ...(typeof originalPayload === 'object' ? originalPayload : {})
                 };
 
                 console.log('Sending Webhook Payload:', JSON.stringify(payload, null, 2));
