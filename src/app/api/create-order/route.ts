@@ -47,14 +47,6 @@ export async function POST(request: Request) {
         const body = await request.json();
         console.log('Create Order Payload:', JSON.stringify(body, null, 2));
 
-        // [DEBUG] Log to Database
-        await supabase.from('api_logs').insert({
-            endpoint: 'create-order',
-            ip_address: ip,
-            request_payload: body,
-            metadata: { key_id: keyId }
-        });
-
         const validation = CreateOrderSchema.safeParse(body);
 
         if (!validation.success) {
@@ -90,6 +82,15 @@ export async function POST(request: Request) {
 
         const orderId = data.id; // This UUID is our "Session ID"
         const checkoutUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://sharkfunded.com'}/secure-checkout/${orderId}`;
+
+        // [DEBUG] Log to Database (After creation to capture Order ID)
+        // We use fire-and-forget here to not block response, but we await it to be safe for serverless
+        await supabase.from('api_logs').insert({
+            endpoint: 'create-order',
+            ip_address: ip,
+            request_payload: body,
+            metadata: { key_id: keyId, order_id: orderId, generated_utr: data.utr }
+        });
 
         return NextResponse.json({
             success: true,
