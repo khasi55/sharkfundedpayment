@@ -9,12 +9,14 @@ import StatsOverview from './dashboard/StatsOverview';
 import UsersTable from './dashboard/UsersTable';
 import TransactionsTable from './dashboard/TransactionsTable';
 import TransactionDetailModal from './dashboard/TransactionDetailModal';
+import ApiLogsTable from './dashboard/ApiLogsTable';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
     const isDashboard = pathname === '/sharkfunded2logintoadminwithpermission';
     const isTransactions = pathname === '/sharkfunded2logintoadminwithpermission/transactions';
     const isUsers = pathname === '/sharkfunded2logintoadminwithpermission/users';
+    const isApiLogs = pathname === '/sharkfunded2logintoadminwithpermission/api-logs';
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
@@ -317,8 +319,12 @@ const AdminDashboardContent: React.FC = () => {
                         formatTime={formatTime}
                         getStatusStyle={getStatusStyle}
                         setSelectedTransaction={setSelectedTransaction}
-                        initiateStatusUpdate={initiateStatusUpdate}
                     />
+                )}
+
+                {/* API Logs View */}
+                {isApiLogs && (
+                    <ApiLogsTable />
                 )}
             </div>
 
