@@ -20,22 +20,7 @@ export function middleware(request: NextRequest) {
     // Define paths that require authentication
     if (path.startsWith('/sharkfunded2logintoadminwithpermission')) {
 
-        // Check IP Allowlist
-        const ip = (request as any).ip || request.headers.get('x-forwarded-for') || '127.0.0.1';
-        const allowedIps = (process.env.ADMIN_ALLOWED_IPS || '').split(',').map(ip => ip.trim());
-
-        // Always allow localhost for development ONLY
-        if (process.env.NODE_ENV === 'development') {
-            allowedIps.push('127.0.0.1');
-            allowedIps.push('::1');
-        }
-
-        if (!allowedIps.includes(ip)) {
-            // Redirect to home page (or 404) if IP is not allowed
-            return NextResponse.redirect(new URL('/', request.url));
-        }
-
-        // Exclude the login page itself (still check IP though, so we move this check AFTER IP check)
+        // Exclude the login page itself
         if (path === '/sharkfunded2logintoadminwithpermission/login') {
             return NextResponse.next();
         }
