@@ -136,9 +136,15 @@ export async function POST(request: Request) {
                 }
 
                 // Fire-and-forget: Send webhook but don't wait for response
-                sendMerchantWebhook(webhookUrl, payload as any)
-                    .then(() => console.log('Webhook sent successfully'))
-                    .catch((webhookError) => console.error('Error sending webhook:', webhookError));
+                console.log('🚀 Starting webhook dispatch...');
+                (async () => {
+                    try {
+                        await sendMerchantWebhook(webhookUrl, payload as any);
+                        console.log('✅ Webhook sent successfully');
+                    } catch (webhookError) {
+                        console.error('❌ Error sending webhook:', webhookError);
+                    }
+                })();
             } else {
                 console.log('No webhook_url found, skipping webhook.');
             }
