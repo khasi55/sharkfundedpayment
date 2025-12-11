@@ -63,12 +63,12 @@ export async function POST(request: Request) {
             let originalPayload: any = {};
 
             // Try to find the original API log for this order
-            const orderIdForLookup = transaction.order_id || transaction.session_id || transaction.id;
-            // We search for metadata->order_id matching the ID
-            // Since we can't easily query JSONB metadata efficiently without an index, and we didn't index it yet,
-            // we will try to match by session_id in the 'transactions' table which we already have.
-            // But wait, we need to query `api_logs`.
-            // Let's query api_logs where metadata->>'order_id' equals our orderId.
+            // CRITICAL: api_logs stores the UUID in metadata->order_id (from create-order)
+            // We MUST use transaction.id (which is the UUID) to find the log.
+            const orderIdForLookup = transaction.id;
+
+            // ... (existing lookup code) ...
+
             const { data: apiLog } = await supabase
                 .from('api_logs')
                 .select('request_payload')
@@ -83,19 +83,17 @@ export async function POST(request: Request) {
                 console.log('Found original API log payload:', JSON.stringify(originalPayload));
 
                 // Prioritize values from the log
-                if (originalPayload.callback_url || originalPayload.callbackUrl) {
-                    webhookUrl = originalPayload.callback_url || originalPayload.callbackUrl;
-                }
-                if (originalPayload.webhook_url || originalPayload.webhookUrl) {
-                    // If both exist, we might want to prefer webhook_url, but stick to existing logic
-                    // existing logic: webhook_url || callback_url
-                    webhookUrl = originalPayload.webhook_url || originalPayload.webhookUrl || webhookUrl;
-                }
                 if (originalPayload.reference_id) {
                     referenceId = originalPayload.reference_id;
                 }
+
+                // CRITICAL: Check for callback_url in strict priority from the LOG
+                if (originalPayload.callback_url) webhookUrl = originalPayload.callback_url;
+                else if (originalPayload.callbackUrl) webhookUrl = originalPayload.callbackUrl;
+                else if (originalPayload.webhook_url) webhookUrl = originalPayload.webhook_url;
+                else if (originalPayload.webhookUrl) webhookUrl = originalPayload.webhookUrl;
             } else {
-                console.log('No API log found for order, falling back to transaction details.');
+                console.log(`No API log found for order lookup ID: ${orderIdForLookup}, falling back to transaction details.`);
             }
 
             if (!webhookUrl) {
