@@ -18,7 +18,7 @@ export default function PaymentStatus(props: PaymentStatusProps) {
         let targetUrl = '';
 
         if (currentStep === 'verified') {
-            targetUrl = 'https://dashboard.sharkfunded.com/thankyoupage';
+            targetUrl = 'https://sharkfunded.com/thank-you';
         } else if (currentStep === 'failed') {
             targetUrl = 'https://dashboard.sharkfunded.com/thankyoupagefailed';
         } else if (callbackUrl) {
