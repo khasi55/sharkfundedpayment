@@ -204,7 +204,9 @@ export default function TransactionsTable({
                                     <td className="px-6 py-4">
                                         <div className="flex flex-col items-start gap-1">
                                             <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-sm whitespace-nowrap ${getStatusStyle(txn.status)}`}>
-                                                {txn.status === 'pending_manual_verification' ? 'Pending Review' : txn.status}
+                                                {txn.status === 'pending_manual_verification' ? 'Pending Review' :
+                                                    txn.status === 'pending_payment' ? (txn.utr && !txn.utr.startsWith('ORDER-') ? `Checking UTR: ${txn.utr}` : 'Pending Payment') :
+                                                        txn.status}
                                             </span>
 
                                             {/* Visible Failure/Cancellation Reason */}

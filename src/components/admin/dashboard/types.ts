@@ -4,7 +4,7 @@ export interface Transaction {
     amount: number;
     utr: string;
     order_id: string;
-    status: 'verified' | 'failed' | 'pending_manual_verification' | 'rejected' | 'cancelled' | 'expired';
+    status: 'verified' | 'failed' | 'pending_manual_verification' | 'rejected' | 'cancelled' | 'expired' | 'pending_payment';
     screenshot_url?: string;
     customer_details: {
         name: string;

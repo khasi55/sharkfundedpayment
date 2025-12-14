@@ -15,6 +15,11 @@ const VerifyPaymentSchema = z.object({
 
 export async function POST(request: Request) {
     try {
+<<<<<<< HEAD
+=======
+        console.log("--- VERIFY PAYMENT API V2 HIT ---");
+        // Rate Limiting
+>>>>>>> 719ad4e (Add debug log to verify-payment)
         const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
         const rateLimit = await checkRateLimit(ip, 'verify-payment', 60, 60);
 
@@ -96,7 +101,11 @@ export async function POST(request: Request) {
             // 1. Exact match
             // 2. Overpayment (parsedFoundAmount > parsedRequestedAmount)
             // 3. Underpayment by up to 5 Rs (parsedFoundAmount >= parsedRequestedAmount - 5)
+<<<<<<< HEAD
             if (paidAmount >= (requestedAmount - 5)) {
+=======
+            if (parsedFoundAmount >= (parsedRequestedAmount - 5)) {
+>>>>>>> 719ad4e (Add debug log to verify-payment)
 
                 if (!Number.isFinite(paidAmount) || !Number.isFinite(requestedAmount)) {
                     return NextResponse.json(
@@ -189,6 +198,7 @@ export async function POST(request: Request) {
                 });
             }
 
+<<<<<<< HEAD
             // If no webhook log found yet, update the transaction with the UTR so admin can see "Checking UTR: ..."
             if (orderId) {
                 // Fetch current details to clear any previous failure reason
@@ -214,6 +224,25 @@ export async function POST(request: Request) {
                         .from('transactions')
                         .update({ utr: utr, status: 'pending_payment' })
                         .eq('id', orderId);
+=======
+                // Record failure
+                // Record failure
+                // FIX: Use orderId (UUID) to find the transaction, as UTR might be a placeholder
+                if (orderId) {
+                    const failureReason = `Amount mismatch. Received: ${foundPayment.amount}, Expected: ${amountStr}`;
+                    const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+                    if (tx) {
+                        const newDetails = {
+                            ...tx.customer_details,
+                            failure_reason: failureReason,
+                            failed_attempt_utr: utr
+                        };
+                        // REMOVED premature failure logic:
+                        // await supabase.from('transactions').update({ status: 'failed', customer_details: newDetails }).eq('id', orderId);
+                        // Trigger failed callback (webhook style)
+                        await handleWebhookTrigger({ ...tx, amount: foundPayment.amount, order_id: 'N/A' }, 'failed');
+                    }
+>>>>>>> 719ad4e (Add debug log to verify-payment)
                 }
             }
 
@@ -226,4 +255,64 @@ export async function POST(request: Request) {
                 { status: 500 }
             );
         }
+<<<<<<< HEAD
     }
+=======
+
+        // Mock Logic
+        if (utr.startsWith('TEST')) {
+            const mockTransaction = {
+                id: 'mock-id',
+                utr,
+                amount: amountStr,
+                status: 'verified',
+                order_id: orderId,
+                customer_details: { email, name }
+            };
+
+            await handleEmailSending(mockTransaction);
+            await handleWebhookTrigger(mockTransaction, 'verified');
+
+            return NextResponse.json({
+                success: true,
+                message: 'Payment verified (MOCKED)',
+                data: { utr, amount, status: 'verified' }
+            });
+        }
+
+        // If no webhook log found yet, update the transaction with the UTR so admin can see "Checking UTR: ..."
+        if (orderId) {
+            // Fetch current details to clear any previous failure reason
+            const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+
+            if (tx) {
+                const newDetails = { ...tx.customer_details };
+                // Remove failure flags so Admin Dashboard and Client don't show "Failed" or old reasons
+                if (newDetails.failure_reason) delete newDetails.failure_reason;
+                if (newDetails.failed_attempt_utr) delete newDetails.failed_attempt_utr;
+
+                await supabase
+                    .from('transactions')
+                    .update({
+                        utr: utr,
+                        status: 'pending_payment',
+                        customer_details: newDetails
+                    })
+                    .eq('id', orderId);
+            } else {
+                // Fallback update if read fails (shouldn't happen)
+                await supabase
+                    .from('transactions')
+                    .update({ utr: utr, status: 'pending_payment' })
+                    .eq('id', orderId);
+            }
+        }
+
+        // Return false to keep polling
+        return NextResponse.json({ success: false, message: 'Payment not found yet. Keep polling.' });
+    } catch (error) {
+        console.error('API Error:', error);
+        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+    }
+}
+>>>>>>> 719ad4e (Add debug log to verify-payment)
