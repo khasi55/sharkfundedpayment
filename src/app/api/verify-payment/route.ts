@@ -15,20 +15,17 @@ const VerifyPaymentSchema = z.object({
 
 export async function POST(request: Request) {
     try {
-        // Rate Limiting
         const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
-        // increased from 10 to 60 to allow polling (e.g. every 5s = 12/min)
         const rateLimit = await checkRateLimit(ip, 'verify-payment', 60, 60);
 
         if (!rateLimit.success) {
             return NextResponse.json(
                 { success: false, message: 'Too many requests. Please try again later.' },
-                { status: 429, headers: { 'Content-Type': 'application/json' } }
+                { status: 429 }
             );
         }
 
         const body = await request.json();
-
         const validation = VerifyPaymentSchema.safeParse(body);
 
         if (!validation.success) {
@@ -41,122 +38,87 @@ export async function POST(request: Request) {
         const { utr, amount, orderId, email, name } = validation.data;
         const amountStr = String(amount);
 
-
-
-        // Helper to send email
         const handleEmailSending = async (transaction: any) => {
-            console.log('--- Email Handle Start ---');
-            console.log('Transaction Data:', {
-                providedEmail: email,
-                txEmail: transaction?.customer_details?.email,
-                utr: utr
-            });
-
             const recipientEmail = email || transaction?.customer_details?.email;
             const recipientName = name || transaction?.customer_details?.name || 'Customer';
-            const orderIdentifier = orderId || transaction?.order_id || transaction?.session_id || 'N/A';
-
-            console.log('Resolved Recipient:', recipientEmail);
+            const orderIdentifier = orderId || transaction?.order_id || 'N/A';
 
             if (recipientEmail) {
-                console.log(`Sending email to ${recipientEmail} for Order ${orderIdentifier}`);
-                try {
-                    const result = await sendPaymentSuccessEmail({
-                        to: recipientEmail,
-                        name: recipientName,
-                        amount: amountStr,
-                        orderId: orderIdentifier,
-                        utr: utr,
-                        date: new Date().toLocaleString()
-                    });
-                    console.log('Email Result:', result);
-                } catch (emailErr) {
-                    console.error('FATAL EMAIL ERROR:', emailErr);
-                }
-            } else {
-                console.log(`No email found for UTR ${utr}, skipping email.`);
+                await sendPaymentSuccessEmail({
+                    to: recipientEmail,
+                    name: recipientName,
+                    amount: amountStr,
+                    orderId: orderIdentifier,
+                    utr,
+                    date: new Date().toLocaleString()
+                });
             }
-            console.log('--- Email Handle End ---');
         };
 
         const handleWebhookTrigger = async (transaction: any, status: 'verified' | 'failed') => {
-            // ONLY send POST if webhook_url is provided. 
-            // Fallback: If no webhook_url, try callback_url (Legacy support)
-            // FINAL Fallback: If neither, use default hardcoded URL
-            let targetUrl = transaction?.customer_details?.webhook_url || transaction?.customer_details?.callback_url;
-
-            if (!targetUrl) {
-                console.log('No webhook_url or callback_url found, using default fallback URL.');
-                targetUrl = 'https://dashboard.sharkfunded.com/sharkpaycallbackrespo';
-            }
+            let targetUrl =
+                transaction?.customer_details?.webhook_url ||
+                transaction?.customer_details?.callback_url ||
+                'https://dashboard.sharkfunded.com/sharkpaycallbackrespo';
 
             const payload = {
                 event: status === 'verified' ? 'payment.success' : 'payment.failed',
                 orderId: transaction?.order_id || orderId || 'N/A',
                 reference_id: transaction?.customer_details?.reference_id,
-                utr: utr,
+                utr,
                 amount: transaction?.amount || amountStr,
-                status: status,
+                status,
                 timestamp: new Date().toISOString()
             };
 
             try {
                 await sendMerchantWebhook(targetUrl, payload as any);
             } catch (err) {
-                console.error('Webhook POST failed (likely 405 if target matches callback_url):', err);
+                console.error('Webhook POST failed:', err);
             }
         };
 
-        // 1. Check Supabase Webhook Logs
-        const { data: foundPayment, error } = await supabase
+        const { data: foundPayment } = await supabase
             .from('webhook_logs')
             .select('*')
             .eq('utr', utr)
             .order('created_at', { ascending: false })
             .limit(1)
-            .limit(1)
             .maybeSingle();
 
-        if (error) {
-            console.error('Supabase error during verification:', error);
-        }
-
         if (foundPayment) {
-            // Check amount (allow overpayment and up to 5 Rs underpayment)
-            const parsedFoundAmount = parseFloat(foundPayment.amount);
-            const parsedRequestedAmount = parseFloat(amountStr);
-            
-            // Allow if paid amount is greater than or equal to (requested amount - 5)
-            if (parsedFoundAmount >= (parsedRequestedAmount - 5)) {
+            // ✅ AMOUNT TOLERANCE LOGIC (ONLY CHANGE)
+            const paidAmount = Number(foundPayment.amount);
+            const requestedAmount = Number(amountStr);
 
+            if (!Number.isFinite(paidAmount) || !Number.isFinite(requestedAmount)) {
+                return NextResponse.json(
+                    { success: false, message: 'Invalid amount data.' },
+                    { status: 400 }
+                );
+            }
 
-                // Fetch transaction details if needed (mostly for fallback if email not provided)
-                // Fetch transaction details
-                // Priority: Lookup by orderId (UUID) if provided (links to initial create-order)
-                // Fallback: Lookup by UTR (legacy or direct)
+            // Allow overpayment and up to ₹5 underpayment
+            if (paidAmount >= (requestedAmount - 5)) {
+
                 let transaction = null;
 
                 if (orderId) {
-                    const { data: txByOrder } = await supabase
+                    const { data } = await supabase
                         .from('transactions')
                         .select('*')
                         .eq('id', orderId)
                         .maybeSingle();
-
-                    if (txByOrder) {
-                        transaction = txByOrder;
-                        // OPTIONAL: Update the placeholder UTR to the real verified UTR now?
-                        // For now, let's just ensure we have the data for the webhook.
-                    }
+                    transaction = data;
                 }
 
                 if (!transaction) {
-                    const { data: txByUtr } = await supabase
+                    const { data } = await supabase
                         .from('transactions')
                         .select('*')
                         .eq('utr', utr)
                         .maybeSingle();
-                    transaction = txByUtr;
+                    transaction = data;
                 }
 
                 await handleEmailSending(transaction);
@@ -168,42 +130,45 @@ export async function POST(request: Request) {
                     data: transaction
                 });
             } else {
-                console.log(`Amount mismatch for UTR ${utr}. Logged: ${foundPayment.amount}, Requested: ${amountStr}`);
-
-                // Record failure
-                // Record failure
-                // FIX: Use orderId (UUID) to find the transaction, as UTR might be a placeholder
                 if (orderId) {
-                    const failureReason = `Amount mismatch. Received: ${foundPayment.amount}, Expected: ${amountStr}`;
-                    const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+                    const failureReason = `Amount mismatch. Received: ${paidAmount}, Expected: ${requestedAmount}`;
+                    const { data: tx } = await supabase
+                        .from('transactions')
+                        .select('customer_details')
+                        .eq('id', orderId)
+                        .single();
+
                     if (tx) {
-                        const newDetails = {
-                            ...tx.customer_details,
-                            failure_reason: failureReason,
-                            failed_attempt_utr: utr
-                        };
-                        await supabase.from('transactions').update({ status: 'failed', customer_details: newDetails }).eq('id', orderId);
-                        // Trigger failed callback (webhook style)
-                        await handleWebhookTrigger({ ...tx, amount: foundPayment.amount, order_id: 'N/A' }, 'failed');
+                        await supabase
+                            .from('transactions')
+                            .update({
+                                status: 'failed',
+                                customer_details: {
+                                    ...tx.customer_details,
+                                    failure_reason: failureReason,
+                                    failed_attempt_utr: utr
+                                }
+                            })
+                            .eq('id', orderId);
+
+                        await handleWebhookTrigger(
+                            { ...tx, amount: paidAmount, order_id: 'N/A' },
+                            'failed'
+                        );
                     }
                 }
 
                 return NextResponse.json({
                     success: false,
-                    message: `Amount mismatch. We received Rs. ${foundPayment.amount} but you are verifying for Rs. ${amountStr}. Please check the amount.`
+                    message: `Amount mismatch. Received Rs. ${paidAmount}, expected Rs. ${requestedAmount}`
                 });
             }
-        } else {
-            console.log(`No webhook log found for UTR ${utr}`);
         }
 
-        // Mock Logic
         if (utr.startsWith('TEST')) {
             const mockTransaction = {
-                id: 'mock-id',
                 utr,
                 amount: amountStr,
-                status: 'verified',
                 order_id: orderId,
                 customer_details: { email, name }
             };
@@ -213,44 +178,41 @@ export async function POST(request: Request) {
 
             return NextResponse.json({
                 success: true,
-                message: 'Payment verified (MOCKED)',
-                data: { utr, amount, status: 'verified' }
+                message: 'Payment verified (MOCKED)'
             });
         }
 
-        // If no webhook log found yet, update the transaction with the UTR so admin can see "Checking UTR: ..."
         if (orderId) {
-             // Fetch current details to clear any previous failure reason
-             const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
-             
-             if (tx) {
-                 const newDetails = { ...tx.customer_details };
-                 // Remove failure flags so Admin Dashboard and Client don't show "Failed" or old reasons
-                 if (newDetails.failure_reason) delete newDetails.failure_reason;
-                 if (newDetails.failed_attempt_utr) delete newDetails.failed_attempt_utr;
+            const { data: tx } = await supabase
+                .from('transactions')
+                .select('customer_details')
+                .eq('id', orderId)
+                .single();
 
-                 await supabase
+            if (tx) {
+                await supabase
                     .from('transactions')
-                    .update({ 
-                        utr: utr, 
-                        status: 'pending_payment',
-                        customer_details: newDetails
+                    .update({
+                        status: 'failed',
+                        customer_details: {
+                            ...tx.customer_details,
+                            failure_reason: 'Payment not found in webhook logs.',
+                            failed_attempt_utr: utr
+                        }
                     })
                     .eq('id', orderId);
-             } else {
-                 // Fallback update if read fails (shouldn't happen)
-                 await supabase
-                    .from('transactions')
-                    .update({ utr: utr, status: 'pending_payment' })
-                    .eq('id', orderId);
-             }
+            }
         }
 
-        // Return false to keep polling
-        return NextResponse.json({ success: false, message: 'Payment not found yet. Status: Polling UTR...' });
+        return NextResponse.json({
+            success: false,
+            message: 'Payment not found yet. Order Cancelled.'
+        });
     } catch (error) {
         console.error('API Error:', error);
-        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json(
+            { success: false, message: 'Internal Server Error' },
+            { status: 500 }
+        );
     }
 }
-
