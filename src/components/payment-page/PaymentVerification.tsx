@@ -41,6 +41,15 @@ export default function PaymentVerification({ verificationStatus, state }: Payme
                     </div>
                 </div>
 
+                {/* Helpful Message */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-center">
+                    <p className="text-xs text-blue-700 font-medium leading-relaxed">
+                        Auto-verification may take <span className="font-bold">2-3 minutes</span>. If it fails, a manual upload option will appear.
+                        <br />
+                        <span className="font-bold text-red-500">Please stay and upload there. Do not leave this page until payment is verified.</span>
+                    </p>
+                </div>
+
                 {/* Progress Steps (Visual Only) */}
                 <div className="flex items-center gap-2 w-full justify-center opacity-60">
                     <div className="h-1 w-8 rounded-full bg-[#635BFF]"></div>
