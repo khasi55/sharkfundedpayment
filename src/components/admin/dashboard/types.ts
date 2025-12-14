@@ -4,7 +4,7 @@ export interface Transaction {
     amount: number;
     utr: string;
     order_id: string;
-    status: 'verified' | 'failed' | 'pending_manual_verification' | 'rejected';
+    status: 'verified' | 'failed' | 'pending_manual_verification' | 'rejected' | 'cancelled' | 'expired';
     screenshot_url?: string;
     customer_details: {
         name: string;
@@ -18,6 +18,7 @@ export interface UserStat {
     name: string;
     totalSpend: number;
     totalOrders: number;
+    verifiedOrders: number;
     lastActive: string;
     status: 'active' | 'inactive';
 }
@@ -27,8 +28,12 @@ export interface DashboardStats {
     totalPayments: number;
     approvedCount: number;
     pendingCount: number;
-    failedRejectedCount: number;
+    failedCount: number;
+    rejectedCount: number;
+    expiredCount: number;
     totalUsers: number;
     todayCount: number;
+    todayApprovedCount: number;
+    todayRejectedCount: number;
     todayVolume: number;
 }

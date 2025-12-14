@@ -121,7 +121,7 @@ export default function TransactionsTable({
                 </div>
 
                 <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 no-scrollbar">
-                    {['all', 'verified', 'pending_manual_verification', 'rejected'].map(f => (
+                    {['all', 'verified', 'pending_manual_verification', 'rejected', 'cancelled', 'expired'].map(f => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
@@ -202,9 +202,21 @@ export default function TransactionsTable({
                                         <span className="font-bold text-slate-900 text-sm">₹{txn.amount.toLocaleString()}</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-sm whitespace-nowrap ${getStatusStyle(txn.status)}`}>
-                                            {txn.status === 'pending_manual_verification' ? 'Pending Review' : txn.status}
-                                        </span>
+                                        <div className="flex flex-col items-start gap-1">
+                                            <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shadow-sm whitespace-nowrap ${getStatusStyle(txn.status)}`}>
+                                                {txn.status === 'pending_manual_verification' ? 'Pending Review' : txn.status}
+                                            </span>
+
+                                            {/* Visible Failure/Cancellation Reason */}
+                                            {(txn.status === 'failed' || txn.status === 'cancelled' || txn.status === 'rejected' || txn.status === 'expired') && txn.customer_details?.failure_reason && (
+                                                <div className="mt-1 px-1">
+                                                    <p className="text-[10px] font-bold text-slate-500 leading-tight flex items-center gap-1">
+                                                        <span className="w-1 h-1 rounded-full bg-slate-400 shrink-0"></span>
+                                                        {txn.customer_details.failure_reason}
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4">
                                         {txn.screenshot_url ? (

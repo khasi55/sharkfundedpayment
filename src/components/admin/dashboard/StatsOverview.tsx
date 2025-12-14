@@ -46,7 +46,13 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
                     <div>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Today's Volume</p>
                         <h3 className="text-2xl font-bold text-slate-900 mt-1">₹{stats.todayVolume.toLocaleString()}</h3>
-                        <p className="text-xs text-slate-400 mt-1">{stats.todayCount} transactions today</p>
+                        <div className="flex items-center gap-3 mt-2 text-xs font-medium">
+                            <span className="text-slate-400">{stats.todayCount} total</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-emerald-600">{stats.todayApprovedCount} approved</span>
+                            <span className="text-slate-300">|</span>
+                            <span className="text-rose-600">{stats.todayRejectedCount} rejected</span>
+                        </div>
                     </div>
                 </div>
 
@@ -70,36 +76,50 @@ export default function StatsOverview({ stats }: StatsOverviewProps) {
 
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Total Payments */}
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-slate-500 text-xs font-bold uppercase">Total Payments</p>
-                        <h4 className="text-xl font-bold text-slate-900 mt-1">{stats.totalPayments}</h4>
-                    </div>
-                    <div className="h-8 w-1 bg-slate-200 rounded-full"></div>
-                </div>
-
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {/* Approved */}
-                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-emerald-600 text-xs font-bold uppercase">Approved</p>
-                        <h4 className="text-xl font-bold text-emerald-900 mt-1">{stats.approvedCount}</h4>
+                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-between h-24">
+                    <div className="flex justify-between items-start">
+                        <p className="text-emerald-600 text-xs font-bold uppercase tracking-wider">Approved</p>
+                        <CheckCircle2 size={16} className="text-emerald-500" />
                     </div>
-                    <div className="p-1.5 bg-emerald-100 rounded-lg">
-                        <CheckCircle2 size={16} className="text-emerald-600" />
-                    </div>
+                    <h4 className="text-2xl font-bold text-emerald-900">{stats.approvedCount}</h4>
                 </div>
 
-                {/* Failed/Rejected */}
-                <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 flex items-center justify-between">
-                    <div>
-                        <p className="text-rose-600 text-xs font-bold uppercase">Failed / Rejected</p>
-                        <h4 className="text-xl font-bold text-rose-900 mt-1">{stats.failedRejectedCount}</h4>
+                {/* Pending */}
+                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100 flex flex-col justify-between h-24">
+                    <div className="flex justify-between items-start">
+                        <p className="text-amber-600 text-xs font-bold uppercase tracking-wider">Pending</p>
+                        <RefreshCcw size={16} className="text-amber-500" />
                     </div>
-                    <div className="p-1.5 bg-rose-100 rounded-lg">
-                        <AlertCircle size={16} className="text-rose-600" />
+                    <h4 className="text-2xl font-bold text-amber-900">{stats.pendingCount}</h4>
+                </div>
+
+                {/* Rejected */}
+                <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100 flex flex-col justify-between h-24">
+                    <div className="flex justify-between items-start">
+                        <p className="text-rose-600 text-xs font-bold uppercase tracking-wider">Rejected</p>
+                        <AlertCircle size={16} className="text-rose-500" />
                     </div>
+                    <h4 className="text-2xl font-bold text-rose-900">{stats.rejectedCount}</h4>
+                </div>
+
+                {/* Failed */}
+                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 flex flex-col justify-between h-24">
+                    <div className="flex justify-between items-start">
+                        <p className="text-orange-600 text-xs font-bold uppercase tracking-wider">Failed</p>
+                        <AlertCircle size={16} className="text-orange-500" />
+                    </div>
+                    <h4 className="text-2xl font-bold text-orange-900">{stats.failedCount}</h4>
+                </div>
+
+                {/* Expired */}
+                <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between h-24">
+                    <div className="flex justify-between items-start">
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Expired</p>
+                        <Clock size={16} className="text-slate-400" />
+                    </div>
+                    <h4 className="text-2xl font-bold text-slate-700">{stats.expiredCount}</h4>
                 </div>
             </div>
         </div>

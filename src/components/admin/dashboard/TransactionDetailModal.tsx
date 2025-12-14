@@ -84,9 +84,16 @@ export default function TransactionDetailModal({
                             </div>
 
                             {transaction.customer_details?.failure_reason && (
-                                <div className="p-3 bg-red-50 border border-red-100 rounded-lg">
-                                    <p className="text-xs font-bold text-red-600 uppercase tracking-wider mb-1">Failure Reason</p>
-                                    <p className="text-sm text-red-700">{transaction.customer_details.failure_reason}</p>
+                                <div className={`p-3 border rounded-lg ${transaction.status === 'cancelled'
+                                        ? 'bg-orange-50 border-orange-100'
+                                        : 'bg-red-50 border-red-100'
+                                    }`}>
+                                    <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${transaction.status === 'cancelled' ? 'text-orange-600' : 'text-red-600'
+                                        }`}>
+                                        {transaction.status === 'cancelled' ? 'Cancellation Reason' : 'Failure Reason'}
+                                    </p>
+                                    <p className={`text-sm ${transaction.status === 'cancelled' ? 'text-orange-700' : 'text-red-700'
+                                        }`}>{transaction.customer_details.failure_reason}</p>
                                 </div>
                             )}
                         </div>

@@ -279,5 +279,53 @@ export default function PaymentStatus(props: PaymentStatusProps) {
         );
     }
 
+    if (currentStep === 'cancelled') {
+        return (
+            <StatusCard glowColor="amber">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-amber-200/50 rounded-full blur-xl opacity-0 animate-pulse-slow"></div>
+                    <div className="w-20 h-20 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center relative z-10 shadow-lg border border-white">
+                        <AlertCircle size={40} />
+                    </div>
+                </div>
+
+                <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Session Closed</h2>
+                    <p className="text-slate-500 text-sm max-w-xs mx-auto">
+                        This payment session has been cancelled and closed.
+                    </p>
+                    {state?.error && (
+                        <p className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100 inline-block">
+                            {state.error}
+                        </p>
+                    )}
+                </div>
+
+                <div className="w-full space-y-3">
+                    <button
+                        onClick={() => window.open('mailto:support@sharkfunded.com', '_blank')}
+                        className="w-full bg-white text-slate-600 border border-slate-200 py-3.5 rounded-xl font-bold text-sm hover:bg-slate-50 hover:text-slate-900 transition-all font-medium"
+                    >
+                        Contact Support
+                    </button>
+
+                    {callbackUrl && (
+                        <div className="text-center">
+                            <p className="text-xs text-slate-400 mb-2">
+                                Redirecting in {autoRedirectTimer}s...
+                            </p>
+                            <button
+                                onClick={handleReturnToMerchant}
+                                className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-indigo-500/20"
+                            >
+                                Return to Merchant
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </StatusCard>
+        );
+    }
+
     return null;
 }

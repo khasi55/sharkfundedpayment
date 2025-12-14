@@ -111,6 +111,16 @@ export default function PaymentPageContent() {
                                 step: 'failed',
                                 error: data.customer_details?.failure_reason || 'Payment failed.'
                             }));
+                        } else if (data.status === 'cancelled') {
+                            // Payment cancelled by user
+                            setState(prev => ({
+                                ...prev,
+                                amount: data.amount.toString(),
+                                name: data.customer_details?.name || '',
+                                email: data.customer_details?.email || '',
+                                step: 'cancelled',
+                                error: data.customer_details?.failure_reason ? `Payment cancelled: ${data.customer_details.failure_reason}` : 'Payment cancelled.'
+                            }));
                         } else {
                             // Pending payment
                             setState(prev => ({
@@ -188,16 +198,40 @@ export default function PaymentPageContent() {
     }, [urlSessionId]);
 
     useEffect(() => {
-        let timer: ReturnType<typeof setInterval>;
-        if (state.step === 'payment' && timeLeft > 0) {
-            timer = setInterval(() => {
-                setTimeLeft((prev) => prev - 1);
-            }, 1000);
-        } else if (timeLeft === 0 && state.step === 'payment') {
-            setState(prev => ({ ...prev, step: 'expired' }));
+        if (state.step !== 'payment') return;
+
+        if (timeLeft <= 0) {
+            // Timer expired logic
+            const expireTransaction = async () => {
+                try {
+                    if (sessionId) {
+                        await supabase
+                            .from('transactions')
+                            .update({ status: 'expired' })
+                            .eq('id', sessionId)
+                            .eq('status', 'pending_payment'); // Only expire if still pending
+                    }
+                } catch (err) {
+                    console.error('Error expiring transaction:', err);
+                }
+            };
+
+            expireTransaction();
+
+            setState(prev => ({
+                ...prev,
+                step: 'expired',
+                error: 'Session expired. Please start a new payment.'
+            }));
+            return;
         }
+
+        const timer = setInterval(() => {
+            setTimeLeft(prev => prev - 1);
+        }, 1000);
+
         return () => clearInterval(timer);
-    }, [state.step, timeLeft]);
+    }, [timeLeft, state.step, sessionId]);
 
     const handleDetailsSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -375,6 +409,34 @@ export default function PaymentPageContent() {
         };
 
         poll();
+    };
+
+    const handleCancelPayment = async (reason: string) => {
+        try {
+            if (sessionId) {
+                await supabase
+                    .from('transactions')
+                    .update({
+                        status: 'cancelled',
+                        customer_details: {
+                            name: state.name,
+                            email: state.email,
+                            failure_reason: reason,
+                            cancelled_at: new Date().toISOString()
+                        }
+                    })
+                    .or(`id.eq.${sessionId},session_id.eq.${sessionId}`);
+            }
+
+            setState(prev => ({
+                ...prev,
+                step: 'cancelled', // Explicitly cancelled
+                error: `Payment cancelled by user. Reason: ${reason}`
+            }));
+
+        } catch (err) {
+            console.error('Error cancelling payment:', err);
+        }
     };
 
     const copyToClipboard = (text: string) => {
@@ -651,7 +713,7 @@ export default function PaymentPageContent() {
                             <img
                                 src="/shark-logo-full.png"
                                 alt="Shark Funded"
-                                className="h-16 w-auto object-contain animate-float"
+                                className="h-28 w-auto object-contain animate-float"
                             />
                         </div>
                     </div>
@@ -733,7 +795,7 @@ export default function PaymentPageContent() {
                 <div className="md:w-[350px] bg-[#F9FAFB] border-r border-slate-100 p-8 flex flex-col justify-between relative">
                     <div>
                         <div className="flex flex-col items-start gap-4 mb-8">
-                            <div className="w-48 h-auto">
+                            <div className="w-72 h-auto">
                                 <img src="/shark-logo-full.png" alt="Shark Funded" className="w-full h-full object-contain" />
                             </div>
                             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
@@ -817,6 +879,7 @@ export default function PaymentPageContent() {
                                 copyToClipboard={copyToClipboard}
                                 copied={copied}
                                 handleToggleUpi={handleToggleUpi}
+                                handleCancel={handleCancelPayment}
                             />
                         )}
 
@@ -827,7 +890,7 @@ export default function PaymentPageContent() {
                             />
                         )}
 
-                        {state.step === 'success' || state.step === 'verified' || state.step === 'review_pending' || state.step === 'failed' || state.step === 'expired' ? (
+                        {state.step === 'success' || state.step === 'verified' || state.step === 'review_pending' || state.step === 'failed' || state.step === 'expired' || state.step === 'cancelled' ? (
                             <div className="md:col-span-12 lg:col-span-8 bg-white p-8 md:p-12 flex items-center justify-center min-h-[600px]">
                                 <PaymentStatus
                                     step={state.step}

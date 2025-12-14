@@ -36,6 +36,9 @@ const AdminDashboardContent: React.FC = () => {
     useEffect(() => {
         fetchTransactions();
 
+        // [NEW] Trigger lazy cleanup of abandoned sessions
+        axios.post('/api/admin/expire-sessions').catch(err => console.warn('Background cleanup failed:', err));
+
         // Real-time subscription
         const subscription = supabase
             .channel('transactions_channel')
@@ -194,6 +197,8 @@ const AdminDashboardContent: React.FC = () => {
         return matchesFilter && matchesSearch && matchesDate;
     });
 
+    const [userFilter, setUserFilter] = useState('all'); // 'all', 'verified'
+
     // Users Calculation
     const users: UserStat[] = useMemo(() => {
         const userMap = new Map<string, UserStat>();
@@ -208,6 +213,7 @@ const AdminDashboardContent: React.FC = () => {
                     name: t.customer_details?.name || 'Unknown',
                     totalSpend: 0,
                     totalOrders: 0,
+                    verifiedOrders: 0,
                     lastActive: t.created_at,
                     status: 'active'
                 });
@@ -216,6 +222,7 @@ const AdminDashboardContent: React.FC = () => {
             const user = userMap.get(email)!;
             if (t.status === 'verified') {
                 user.totalSpend += Number(t.amount);
+                user.verifiedOrders += 1;
             }
             user.totalOrders += 1;
             if (new Date(t.created_at) > new Date(user.lastActive)) {
@@ -226,10 +233,17 @@ const AdminDashboardContent: React.FC = () => {
         return Array.from(userMap.values()).sort((a, b) => b.totalSpend - a.totalSpend);
     }, [transactions]);
 
-    const filteredUsers = users.filter(u =>
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredUsers = users.filter(u => {
+        const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+            u.email.toLowerCase().includes(search.toLowerCase());
+
+        let matchesFilter = true;
+        if (userFilter === 'verified') {
+            matchesFilter = u.verifiedOrders > 0;
+        }
+
+        return matchesSearch && matchesFilter;
+    });
 
     const handleExport = () => {
         const escapeCsvField = (field: any) => {
@@ -272,6 +286,7 @@ const AdminDashboardContent: React.FC = () => {
             case 'verified': return 'bg-emerald-50 text-emerald-700 border-emerald-100 ring-1 ring-emerald-600/10';
             case 'pending_manual_verification': return 'bg-amber-50 text-amber-700 border-amber-100 ring-1 ring-amber-600/10';
             case 'rejected': return 'bg-rose-50 text-rose-700 border-rose-100 ring-1 ring-rose-600/10';
+            case 'cancelled': return 'bg-orange-50 text-orange-700 border-orange-100 ring-1 ring-orange-600/10';
             case 'expired': return 'bg-slate-100 text-slate-600 border-slate-200 ring-1 ring-slate-600/10';
             default: return 'bg-slate-50 text-slate-700 border-slate-100 ring-1 ring-slate-600/10';
         }
@@ -299,21 +314,29 @@ const AdminDashboardContent: React.FC = () => {
         const totalPayments = transactions.length;
         const approvedCount = transactions.filter(t => t.status === 'verified').length;
         const pendingCount = transactions.filter(t => t.status === 'pending_manual_verification').length;
-        const failedRejectedCount = transactions.filter(t => t.status === 'failed' || t.status === 'rejected').length;
+        const failedCount = transactions.filter(t => t.status === 'failed').length;
+        const rejectedCount = transactions.filter(t => t.status === 'rejected').length;
+        const expiredCount = transactions.filter(t => t.status === 'expired').length;
         const totalUsers = new Set(transactions.map(t => t.customer_details?.email)).size;
 
         const todayTransactions = transactions.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString());
         const todayCount = todayTransactions.length;
         const todayVolume = todayTransactions.filter(t => t.status === 'verified').reduce((sum, t) => sum + Number(t.amount), 0);
+        const todayApprovedCount = todayTransactions.filter(t => t.status === 'verified').length;
+        const todayRejectedCount = todayTransactions.filter(t => t.status === 'failed' || t.status === 'rejected').length;
 
         return {
             totalRevenue,
             totalPayments,
             approvedCount,
             pendingCount,
-            failedRejectedCount,
+            failedCount,
+            rejectedCount,
+            expiredCount,
             totalUsers,
             todayCount,
+            todayApprovedCount,
+            todayRejectedCount,
             todayVolume
         };
     }, [transactions]);
@@ -330,6 +353,8 @@ const AdminDashboardContent: React.FC = () => {
                         users={filteredUsers}
                         search={search}
                         setSearch={setSearch}
+                        filter={userFilter}
+                        setFilter={setUserFilter}
                         formatDate={formatDate}
                         formatTime={formatTime}
                     />

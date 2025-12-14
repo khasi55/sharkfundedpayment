@@ -1,5 +1,5 @@
 export interface PaymentState {
-    step: 'details' | 'payment' | 'verifying' | 'success' | 'failed' | 'expired' | 'manual_upload' | 'verified' | 'review_pending';
+    step: 'details' | 'payment' | 'verifying' | 'success' | 'failed' | 'expired' | 'manual_upload' | 'verified' | 'review_pending' | 'cancelled';
     amount: string;
     name: string;
     email: string;
@@ -22,7 +22,7 @@ export interface PaymentManualUploadProps {
 
 export interface PaymentStatusProps {
     // New simplified props
-    step?: 'details' | 'payment' | 'verifying' | 'success' | 'failed' | 'expired' | 'manual_upload' | 'verified' | 'review_pending';
+    step?: 'details' | 'payment' | 'verifying' | 'success' | 'failed' | 'expired' | 'manual_upload' | 'verified' | 'review_pending' | 'cancelled';
     amount?: string;
     orderId?: string;
     callbackUrl?: string | null;

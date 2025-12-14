@@ -1,8 +1,9 @@
-import React from 'react';
+import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Clock, CheckCircle2, Copy, AlertCircle, Lock, ArrowDown } from 'lucide-react';
 import { PaymentState } from './types';
 import { formatTime } from './utils';
+import CancelPaymentModal from './CancelPaymentModal';
 
 interface PaymentQRSectionProps {
     state: PaymentState;
@@ -15,6 +16,7 @@ interface PaymentQRSectionProps {
     copyToClipboard: (text: string) => void;
     copied: boolean;
     handleToggleUpi?: () => void; // Optional to not break old usages immediately
+    handleCancel: (reason: string) => void;
 }
 
 export default function PaymentQRSection({
@@ -27,8 +29,11 @@ export default function PaymentQRSection({
     upiId,
     copyToClipboard,
     copied,
-    handleToggleUpi
+    handleToggleUpi,
+    handleCancel
 }: PaymentQRSectionProps) {
+    const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header & Timer */}
@@ -135,6 +140,30 @@ export default function PaymentQRSection({
                 </div>
 
             </div>
+
+            {/* Cancellation Section */}
+            <div className="pt-4 border-t border-slate-100">
+                <div className="flex flex-col items-center gap-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Having trouble?</p>
+
+                    <button
+                        onClick={() => setIsCancelModalOpen(true)}
+                        className="text-xs font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 px-4 py-2 rounded-lg transition-all"
+                    >
+                        Cancel Payment
+                    </button>
+                </div>
+            </div>
+
+            <CancelPaymentModal
+                isOpen={isCancelModalOpen}
+                onClose={() => setIsCancelModalOpen(false)}
+                onConfirm={(reason) => {
+                    handleCancel(reason);
+                    setIsCancelModalOpen(false);
+                }}
+            />
+
 
             {/* UTR Input Section - Compacted */}
             <div className="pt-6 border-t border-slate-100">

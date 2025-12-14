@@ -20,11 +20,12 @@ export const sendMerchantWebhook = async (url: string, payload: WebhookPayload) 
             timeout: 10000,
             headers: { 'Content-Type': 'application/json', 'User-Agent': 'SharkFunded-Callback/1.0' }
         });
-        console.log(`Callback (POST) sent successfully to ${url}`);
+        console.log(`✅ Callback (POST) sent successfully to ${url}`);
         return true;
     } catch (error: any) {
         // 2. If POST fails (especially 405), Try GET
-        console.warn(`Callback (POST) failed: ${error.message}. Retrying with GET...`);
+        const errorMsg = error.code === 'ECONNABORTED' ? 'Request timed out (10s)' : error.message;
+        console.error(`❌ Callback (POST) failed: ${errorMsg}. Retrying with GET...`);
 
         try {
             const params = new URLSearchParams(payload as any).toString();
