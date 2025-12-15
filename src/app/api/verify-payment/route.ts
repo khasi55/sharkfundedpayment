@@ -87,132 +87,143 @@ export async function POST(request: Request) {
             .maybeSingle();
 
         if (foundPayment) {
-            // ✅ AMOUNT TOLERANCE LOGIC (ONLY CHANGE)
+            // Amount Tolerance Logic
             const paidAmount = Number(foundPayment.amount);
             const requestedAmount = Number(amountStr);
 
-            if (!Number.isFinite(paidAmount) || !Number.isFinite(requestedAmount)) {
-                return NextResponse.json(
-                    { success: false, message: 'Invalid amount data.' },
-                    { status: 400 }
-                );
-            }
-
-            // Allow overpayment and up to ₹5 underpayment
+            // Allow if paid amount is greater than or equal to (requested amount - 5)
+            // This covers: 
+            // 1. Exact match
+            // 2. Overpayment (parsedFoundAmount > parsedRequestedAmount)
+            // 3. Underpayment by up to 5 Rs (parsedFoundAmount >= parsedRequestedAmount - 5)
             if (paidAmount >= (requestedAmount - 5)) {
 
-                let transaction = null;
-
-                if (orderId) {
-                    const { data } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('id', orderId)
-                        .maybeSingle();
-                    transaction = data;
+                if (!Number.isFinite(paidAmount) || !Number.isFinite(requestedAmount)) {
+                    return NextResponse.json(
+                        { success: false, message: 'Invalid amount data.' },
+                        { status: 400 }
+                    );
                 }
 
-                if (!transaction) {
-                    const { data } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('utr', utr)
-                        .maybeSingle();
-                    transaction = data;
-                }
+                // Allow overpayment and up to ₹5 underpayment
+                if (paidAmount >= (requestedAmount - 5)) {
 
-                await handleEmailSending(transaction);
-                await handleWebhookTrigger(transaction, 'verified');
+                    let transaction = null;
+
+                    if (orderId) {
+                        const { data } = await supabase
+                            .from('transactions')
+                            .select('*')
+                            .eq('id', orderId)
+                            .maybeSingle();
+                        transaction = data;
+                    }
+
+                    if (!transaction) {
+                        const { data } = await supabase
+                            .from('transactions')
+                            .select('*')
+                            .eq('utr', utr)
+                            .maybeSingle();
+                        transaction = data;
+                    }
+
+                    await handleEmailSending(transaction);
+                    await handleWebhookTrigger(transaction, 'verified');
+
+                    return NextResponse.json({
+                        success: true,
+                        message: 'Payment verified',
+                        data: transaction
+                    });
+                } else {
+                    if (orderId) {
+                        const failureReason = `Amount mismatch. Received: ${paidAmount}, Expected: ${requestedAmount}`;
+                        const { data: tx } = await supabase
+                            .from('transactions')
+                            .select('customer_details')
+                            .eq('id', orderId)
+                            .single();
+
+                        if (tx) {
+                            await supabase
+                                .from('transactions')
+                                .update({
+                                    status: 'failed',
+                                    customer_details: {
+                                        ...tx.customer_details,
+                                        failure_reason: failureReason,
+                                        failed_attempt_utr: utr
+                                    }
+                                })
+                                .eq('id', orderId);
+
+                            await handleWebhookTrigger(
+                                { ...tx, amount: paidAmount, order_id: 'N/A' },
+                                'failed'
+                            );
+                        }
+                    }
+
+                    return NextResponse.json({
+                        success: false,
+                        message: `Amount mismatch. Received Rs. ${paidAmount}, expected Rs. ${requestedAmount}`
+                    });
+                }
+            }
+
+            if (utr.startsWith('TEST')) {
+                const mockTransaction = {
+                    utr,
+                    amount: amountStr,
+                    order_id: orderId,
+                    customer_details: { email, name }
+                };
+
+                await handleEmailSending(mockTransaction);
+                await handleWebhookTrigger(mockTransaction, 'verified');
 
                 return NextResponse.json({
                     success: true,
-                    message: 'Payment verified',
-                    data: transaction
+                    message: 'Payment verified (MOCKED)'
                 });
-            } else {
-                if (orderId) {
-                    const failureReason = `Amount mismatch. Received: ${paidAmount}, Expected: ${requestedAmount}`;
-                    const { data: tx } = await supabase
+            }
+
+            // If no webhook log found yet, update the transaction with the UTR so admin can see "Checking UTR: ..."
+            if (orderId) {
+                // Fetch current details to clear any previous failure reason
+                const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+
+                if (tx) {
+                    const newDetails = { ...tx.customer_details };
+                    // Remove failure flags so Admin Dashboard and Client don't show "Failed" or old reasons
+                    if (newDetails.failure_reason) delete newDetails.failure_reason;
+                    if (newDetails.failed_attempt_utr) delete newDetails.failed_attempt_utr;
+
+                    await supabase
                         .from('transactions')
-                        .select('customer_details')
-                        .eq('id', orderId)
-                        .single();
-
-                    if (tx) {
-                        await supabase
-                            .from('transactions')
-                            .update({
-                                status: 'failed',
-                                customer_details: {
-                                    ...tx.customer_details,
-                                    failure_reason: failureReason,
-                                    failed_attempt_utr: utr
-                                }
-                            })
-                            .eq('id', orderId);
-
-                        await handleWebhookTrigger(
-                            { ...tx, amount: paidAmount, order_id: 'N/A' },
-                            'failed'
-                        );
-                    }
+                        .update({
+                            utr: utr,
+                            status: 'pending_payment',
+                            customer_details: newDetails
+                        })
+                        .eq('id', orderId);
+                } else {
+                    // Fallback update if read fails (shouldn't happen)
+                    await supabase
+                        .from('transactions')
+                        .update({ utr: utr, status: 'pending_payment' })
+                        .eq('id', orderId);
                 }
-
-                return NextResponse.json({
-                    success: false,
-                    message: `Amount mismatch. Received Rs. ${paidAmount}, expected Rs. ${requestedAmount}`
-                });
             }
+
+            // Return false to keep polling
+            return NextResponse.json({ success: false, message: 'Payment not found yet. Status: Polling UTR...' });
+        } catch (error) {
+            console.error('API Error:', error);
+            return NextResponse.json(
+                { success: false, message: 'Internal Server Error' },
+                { status: 500 }
+            );
         }
-
-        if (utr.startsWith('TEST')) {
-            const mockTransaction = {
-                utr,
-                amount: amountStr,
-                order_id: orderId,
-                customer_details: { email, name }
-            };
-
-            await handleEmailSending(mockTransaction);
-            await handleWebhookTrigger(mockTransaction, 'verified');
-
-            return NextResponse.json({
-                success: true,
-                message: 'Payment verified (MOCKED)'
-            });
-        }
-
-        if (orderId) {
-            const { data: tx } = await supabase
-                .from('transactions')
-                .select('customer_details')
-                .eq('id', orderId)
-                .single();
-
-            if (tx) {
-                await supabase
-                    .from('transactions')
-                    .update({
-                        status: 'failed',
-                        customer_details: {
-                            ...tx.customer_details,
-                            failure_reason: 'Payment not found in webhook logs.',
-                            failed_attempt_utr: utr
-                        }
-                    })
-                    .eq('id', orderId);
-            }
-        }
-
-        return NextResponse.json({
-            success: false,
-            message: 'Payment not found yet. Order Cancelled.'
-        });
-    } catch (error) {
-        console.error('API Error:', error);
-        return NextResponse.json(
-            { success: false, message: 'Internal Server Error' },
-            { status: 500 }
-        );
     }
-}

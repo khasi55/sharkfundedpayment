@@ -73,7 +73,40 @@ const AdminDashboardContent: React.FC = () => {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setTransactions(data || []);
+
+            // [Auto-Expire Logic]
+            // Identify pending orders > 20 mins old
+            const now = Date.now();
+            const twentyMinsInMs = 20 * 60 * 1000;
+            const ordersToExpire = (data || []).filter(t => {
+                if (t.status === 'pending_payment') {
+                    const createdAt = new Date(t.created_at).getTime();
+                    return (now - createdAt) > twentyMinsInMs;
+                }
+                return false;
+            });
+
+            if (ordersToExpire.length > 0) {
+                console.log(`Found ${ordersToExpire.length} expired orders. Updating...`);
+                const idsToExpire = ordersToExpire.map(t => t.id);
+
+                // 1. Update DB
+                await supabase
+                    .from('transactions')
+                    .update({ status: 'expired' })
+                    .in('id', idsToExpire);
+
+                // 2. Update Local Data (Optimization: avoid re-fetch)
+                const updatedData = (data || []).map(t => {
+                    if (idsToExpire.includes(t.id)) {
+                        return { ...t, status: 'expired' };
+                    }
+                    return t;
+                });
+                setTransactions(updatedData as Transaction[]);
+            } else {
+                setTransactions(data || []);
+            }
         } catch (error) {
             console.error('Error fetching transactions:', error);
         } finally {
@@ -239,6 +272,7 @@ const AdminDashboardContent: React.FC = () => {
             case 'verified': return 'bg-emerald-50 text-emerald-700 border-emerald-100 ring-1 ring-emerald-600/10';
             case 'pending_manual_verification': return 'bg-amber-50 text-amber-700 border-amber-100 ring-1 ring-amber-600/10';
             case 'rejected': return 'bg-rose-50 text-rose-700 border-rose-100 ring-1 ring-rose-600/10';
+            case 'expired': return 'bg-slate-100 text-slate-600 border-slate-200 ring-1 ring-slate-600/10';
             default: return 'bg-slate-50 text-slate-700 border-slate-100 ring-1 ring-slate-600/10';
         }
     };
