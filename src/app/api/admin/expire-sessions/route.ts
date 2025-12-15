@@ -10,12 +10,14 @@ export async function POST(request: Request) {
         const graceThreshold = new Date(Date.now() - 20 * 60 * 1000).toISOString();
 
         // Update transactions that are 'pending_payment' AND older than threshold
-        const { data, error, count } = await supabase
+        const { data, error } = await supabase
             .from('transactions')
             .update({ status: 'expired' })
             .eq('status', 'pending_payment')
             .lt('created_at', graceThreshold)
-            .select('id', { count: 'exact' });
+            .select('id');
+
+        const count = data ? data.length : 0;
 
         if (error) {
             console.error('Error expiring sessions:', error);
