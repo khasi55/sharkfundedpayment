@@ -711,7 +711,7 @@ export default function PaymentPageContent() {
                         <div className="absolute inset-0 bg-indigo-500/10 blur-2xl rounded-full opacity-0 group-hover:opacity-30 transition-opacity duration-1000 animate-pulse-slow"></div>
                         <div className="relative z-10 p-5 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/60 shadow-xl shadow-indigo-100/50 ring-1 ring-white/50">
                             <img
-                                src="/shark-logo-full.png"
+                                src="/shark-logo-email.png"
                                 alt="Shark Funded"
                                 className="h-28 w-auto object-contain animate-float"
                             />
@@ -796,7 +796,7 @@ export default function PaymentPageContent() {
                     <div>
                         <div className="flex flex-col items-start gap-4 mb-8">
                             <div className="w-72 h-auto">
-                                <img src="/shark-logo-full.png" alt="Shark Funded" className="w-full h-full object-contain" />
+                                <img src="/shark-logo-email.png" alt="Shark Funded" className="w-full h-full object-contain" />
                             </div>
                             <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
                                 <ShieldCheck size={12} className="text-emerald-500" />

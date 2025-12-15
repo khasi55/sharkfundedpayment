@@ -44,7 +44,7 @@ export const generateInvoice = async (details: TransactionDetails) => {
 
         // Logo
         try {
-            const logoImg = await loadImage('/shark-logo-full.png');
+            const logoImg = await loadImage('/shark-logo-email.png');
             const logoWidth = 45;
             const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
             doc.addImage(logoImg, 'PNG', 15, 20, logoWidth, logoHeight);

@@ -32,7 +32,7 @@ export default function MaintenancePage() {
                 </div>
 
                 <div className="mt-8 pt-8 border-t border-white/5 w-full">
-                    <img src="/shark-logo-full.png" alt="Shark Funded" className="h-8 mx-auto opacity-50 grayscale hover:grayscale-0 transition-all duration-500" />
+                    <img src="/shark-logo-email.png" alt="Shark Funded" className="h-8 mx-auto opacity-50 grayscale hover:grayscale-0 transition-all duration-500" />
                 </div>
             </div>
 

@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     title: "SharkFunded",
     description: "SharkFunded Application",
     icons: {
-        icon: '/shark-icon.jpg',
+        icon: '/shark-logo-email.png',
     },
 };
 

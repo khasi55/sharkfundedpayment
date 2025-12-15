@@ -24,7 +24,7 @@ export const generateServerInvoice = async (details: TransactionDetails): Promis
 
     // Add Logo
     try {
-        const logoPath = path.join(process.cwd(), 'public', 'shark-logo-full.png');
+        const logoPath = path.join(process.cwd(), 'public', 'shark-logo-email.png');
         if (fs.existsSync(logoPath)) {
             const logoData = fs.readFileSync(logoPath).toString('base64');
             doc.addImage(logoData, 'PNG', 15, 15, 50, 15); // Adjust dimensions as needed

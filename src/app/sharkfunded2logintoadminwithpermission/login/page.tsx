@@ -48,7 +48,7 @@ const AdminLoginPage: React.FC = () => {
                 <div className="p-8">
                     <div className="text-center mb-8">
                         <div className="w-48 mx-auto mb-6">
-                            <img src="/shark-logo-full.png" alt="SharkFunded" className="w-full h-auto object-contain" />
+                            <img src="/shark-logo-email.png" alt="SharkFunded" className="w-full h-auto object-contain" />
                         </div>
                         <h2 className="text-2xl font-bold text-slate-900">Admin Login</h2>
                         <p className="text-slate-500 mt-2">Secure access for administrators only</p>

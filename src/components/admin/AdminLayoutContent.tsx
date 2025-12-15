@@ -59,7 +59,7 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
                 <div className="p-6 border-b border-slate-800 flex items-center gap-3 shrink-0">
-                    <img src="/shark-icon.jpg" alt="SharkFunded" className="h-8 w-8 rounded-lg object-cover" />
+                    <img src="/shark-logo-email.png" alt="SharkFunded" className="h-8 w-auto object-contain" />
                     <span className="font-bold text-lg tracking-tight">SharkFunded Admin</span>
                     <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden text-slate-400 hover:text-white ml-auto">
                         <X size={24} />
