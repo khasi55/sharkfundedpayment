@@ -66,8 +66,18 @@ TO public
 USING (true)
 WITH CHECK (true);
 
--- Enable Realtime
-alter publication supabase_realtime add table transactions;
+-- Enable Realtime for transactions
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'transactions'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+    END IF;
+END $$;
 
 -- Admin Table
 CREATE TABLE IF NOT EXISTS admin (
@@ -75,6 +85,7 @@ CREATE TABLE IF NOT EXISTS admin (
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     name TEXT,
+    role TEXT DEFAULT 'subadmin',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -98,7 +109,8 @@ BEGIN
             'user', jsonb_build_object(
                 'id', admin_user.id,
                 'email', admin_user.email,
-                'name', admin_user.name
+                'name', admin_user.name,
+                'role', admin_user.role
             )
         );
     ELSE
@@ -147,4 +159,14 @@ USING (true);
 CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(order_id);
 
 -- Enable Realtime for Webhook Logs
-alter publication supabase_realtime add table webhook_logs;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+        AND schemaname = 'public' 
+        AND tablename = 'webhook_logs'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE webhook_logs;
+    END IF;
+END $$;

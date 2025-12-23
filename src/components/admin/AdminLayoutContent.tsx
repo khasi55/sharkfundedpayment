@@ -14,6 +14,8 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const [adminName, setAdminName] = useState('Admin');
+    const [adminRole, setAdminRole] = useState('subadmin');
+
 
 
     const isActive = (path: string) => pathname === path;
@@ -40,11 +42,24 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                 // Prefer 'name', then 'full_name', then 'email' (local part), then default
                 const name = user.name || user.user_metadata?.name || user.full_name || user.email?.split('@')[0] || 'Admin';
                 setAdminName(name);
+                setAdminRole(user.role || 'subadmin');
+
+                // Role-based redirection logic
+                const role = user.role || 'subadmin';
+                const otpPath = '/sharkfunded2logintoadminwithpermission/otps';
+                const baseAdminPath = '/sharkfunded2logintoadminwithpermission';
+
+                if (role === 'otp_admin' && pathname !== otpPath) {
+                    router.replace(otpPath);
+                }
             } catch (e) {
                 console.error("Failed to parse admin user", e);
             }
         }
-    }, [router]);
+    }, [router, pathname]);
+
+    const isSubAdmin = adminRole === 'subadmin';
+    const isOtpAdmin = adminRole === 'otp_admin';
 
     return (
         <div className="h-screen bg-slate-50 flex font-sans overflow-hidden relative">
@@ -71,54 +86,59 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
 
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-2">Menu</p>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <LayoutDashboard size={20} className={isActive('/sharkfunded2logintoadminwithpermission') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">Dashboard</span>
-                    </Link>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission/transactions"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">Transactions</span>
-                    </Link>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission/webhook-logs"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <ShieldCheck size={20} className={isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">Received Confirmations</span>
-                    </Link>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission/users"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/users') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/users') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">Users</span>
-                    </Link>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission/system-status"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">System Status</span>
-                    </Link>
-                    <Link
-                        href="/sharkfunded2logintoadminwithpermission/api-logs"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/api-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                    >
-                        <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/api-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                        <span className="font-medium text-sm">API Payloads</span>
-                    </Link>
+
+                    {isSubAdmin && (
+                        <>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <LayoutDashboard size={20} className={isActive('/sharkfunded2logintoadminwithpermission') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/transactions"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">Transactions</span>
+                            </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/webhook-logs"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <ShieldCheck size={20} className={isActive('/sharkfunded2logintoadminwithpermission/webhook-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">Received Confirmations</span>
+                            </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/users"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/users') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/users') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">Users</span>
+                            </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/system-status"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/system-status') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">System Status</span>
+                            </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/api-logs"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/api-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/api-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">API Payloads</span>
+                            </Link>
+                        </>
+                    )}
 
                     <Link
                         href="/sharkfunded2logintoadminwithpermission/otps"
