@@ -120,7 +120,10 @@ CREATE TABLE IF NOT EXISTS webhook_logs (
     amount DECIMAL,
     sender TEXT,
     raw_text TEXT,
-    payload JSONB
+    payload JSONB,
+    is_otp BOOLEAN DEFAULT FALSE,
+    otp_code TEXT,
+    otp_name TEXT
 );
 
 -- RLS for Webhook Logs

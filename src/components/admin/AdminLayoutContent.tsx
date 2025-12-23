@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, CreditCard, LogOut, ShieldCheck, Menu, X, Activity } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, LogOut, ShieldCheck, Menu, X, Activity, Key, MessageSquare } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+
 import ConfirmationModal from '@/components/ConfirmationModal';
 import NotificationCenter from './dashboard/NotificationCenter';
 
@@ -12,6 +14,7 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     const [adminName, setAdminName] = useState('Admin');
+
 
     const isActive = (path: string) => pathname === path;
 
@@ -116,6 +119,16 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                         <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/api-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                         <span className="font-medium text-sm">API Payloads</span>
                     </Link>
+
+                    <Link
+                        href="/sharkfunded2logintoadminwithpermission/otps"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/otps') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                    >
+                        <Key size={20} className={isActive('/sharkfunded2logintoadminwithpermission/otps') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                        <span className="font-medium text-sm">OTPs</span>
+                    </Link>
+
 
                 </nav>
 
