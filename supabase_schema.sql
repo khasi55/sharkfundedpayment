@@ -86,11 +86,20 @@ CREATE TABLE IF NOT EXISTS admin (
     password TEXT NOT NULL,
     name TEXT,
     role TEXT DEFAULT 'subadmin',
+    permissions JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- RLS for Admin
 ALTER TABLE admin ENABLE ROW LEVEL SECURITY;
+
+-- Simple policies to allow the Admin Management UI to work
+-- (Following the existing open pattern in this schema)
+DROP POLICY IF EXISTS "Enable read access for all users" ON admin;
+CREATE POLICY "Enable read access for all users" ON admin FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Enable all access for all users" ON admin;
+CREATE POLICY "Enable all access for all users" ON admin FOR ALL USING (true);
 
 -- RPC Function for Login
 CREATE OR REPLACE FUNCTION check_admin_login(email_input TEXT, password_input TEXT)
@@ -110,7 +119,8 @@ BEGIN
                 'id', admin_user.id,
                 'email', admin_user.email,
                 'name', admin_user.name,
-                'role', admin_user.role
+                'role', COALESCE(admin_user.role, 'subadmin'),
+                'permissions', COALESCE(admin_user.permissions, '[]'::jsonb)
             )
         );
     ELSE
@@ -120,8 +130,8 @@ END;
 $$;
 
 -- Default Admin User
-INSERT INTO admin (email, password, name)
-VALUES ('admin@sharkfunded.com', 'admin123', 'Super Admin')
+INSERT INTO admin (email, password, name, role)
+VALUES ('admin@sharkfunded.com', 'admin123', 'Super Admin', 'superadmin')
 ON CONFLICT (email) DO NOTHING;
 
 -- Webhook Logs Table (for storing incoming SMS/payment notifications)
