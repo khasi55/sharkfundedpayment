@@ -17,12 +17,14 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'No text found in webhook payload. Received: ' + JSON.stringify(body) }, { status: 400 });
         }
 
-        const utrMatch = text.match(/\b\d{12}\b/); // Look for exactly 12 digits
-        const amountMatch = text.match(/(?:Rs\.?|INR)\s*([\d,]+(?:\.\d{2})?)/i);
-
         // OTP Detection Logic
-        const otpMatch = text.match(/\b(\d{4,6})\b/); // Look for 4-6 digit OTP
-        const isOtp = !!otpMatch && !utrMatch; // If it has 4-6 digits but no 12-digit UTR, it's likely an OTP
+        const utrMatch = text.match(/\b\d{12}\b/); // Look for exactly 12 digits
+        const amountMatch = text.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{2})?)/i);
+
+        // Refined OTP Detection: Look for exactly 6 digits
+        // We exclude numbers that follow A/c (account) or Bal (balance) or currency symbols
+        const otpMatch = text.match(/(?<!(?:Rs\.?|INR|₹|A\/c|Bal(?:ance)?|No\.?)\s*)\b(\d{6})\b/i);
+        const isOtp = !!otpMatch && !utrMatch;
 
         let otpCode = null;
         let otpName = null;
@@ -30,7 +32,9 @@ export async function POST(request: Request) {
         if (isOtp && otpMatch) {
             otpCode = otpMatch[1];
             // Try to extract name if it follows patterns like "From [Name]:" or "[Name] OTP:"
-            const nameMatch = text.match(/(?:From|Sender|Name):\s*([^,.\n:]+)/i) || text.match(/^([^,.\n:]+)\s*(?:OTP|is your)/i);
+            const nameMatch = text.match(/(?:From|Sender|Name):\s*([^,.\n:]+)/i) ||
+                text.match(/^([^,.\n:]+)\s*(?:OTP|is your)/i) ||
+                text.match(/([a-z0-9]+)\s+OTP/i);
             if (nameMatch) {
                 otpName = nameMatch[1].trim();
             }
