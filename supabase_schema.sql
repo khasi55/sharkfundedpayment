@@ -17,6 +17,10 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transactions' AND column_name = 'screenshot_url') THEN
         ALTER TABLE transactions ADD COLUMN screenshot_url text;
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'transactions' AND column_name = 'merchant_upi_id') THEN
+        ALTER TABLE transactions ADD COLUMN merchant_upi_id text;
+    END IF;
 END $$;
 
 -- Storage Bucket Setup

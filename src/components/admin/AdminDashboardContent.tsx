@@ -10,6 +10,7 @@ import UsersTable from './dashboard/UsersTable';
 import TransactionsTable from './dashboard/TransactionsTable';
 import TransactionDetailModal from './dashboard/TransactionDetailModal';
 import ApiLogsTable from './dashboard/ApiLogsTable';
+import CalendarStats from './dashboard/CalendarStats';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
@@ -45,7 +46,7 @@ const AdminDashboardContent: React.FC = () => {
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'transactions' },
-                (payload) => {
+                (payload: any) => {
                     console.log('Real-time change:', payload);
 
                     if (payload.eventType === 'INSERT') {
@@ -57,7 +58,7 @@ const AdminDashboardContent: React.FC = () => {
                     }
                 }
             )
-            .subscribe((status) => {
+            .subscribe((status: string) => {
                 if (status === 'SUBSCRIBED') {
                     console.log('Subscribed to real-time updates');
                 }
@@ -81,7 +82,7 @@ const AdminDashboardContent: React.FC = () => {
             // Identify pending orders > 20 mins old
             const now = Date.now();
             const twentyMinsInMs = 20 * 60 * 1000;
-            const ordersToExpire = (data || []).filter(t => {
+            const ordersToExpire = (data || []).filter((t: any) => {
                 if (t.status === 'pending_payment') {
                     const createdAt = new Date(t.created_at).getTime();
                     return (now - createdAt) > twentyMinsInMs;
@@ -91,7 +92,7 @@ const AdminDashboardContent: React.FC = () => {
 
             if (ordersToExpire.length > 0) {
                 console.log(`Found ${ordersToExpire.length} expired orders. Updating...`);
-                const idsToExpire = ordersToExpire.map(t => t.id);
+                const idsToExpire = ordersToExpire.map((t: any) => t.id);
 
                 // 1. Update DB
                 await supabase
@@ -100,7 +101,7 @@ const AdminDashboardContent: React.FC = () => {
                     .in('id', idsToExpire);
 
                 // 2. Update Local Data (Optimization: avoid re-fetch)
-                const updatedData = (data || []).map(t => {
+                const updatedData = (data || []).map((t: any) => {
                     if (idsToExpire.includes(t.id)) {
                         return { ...t, status: 'expired' };
                     }
@@ -108,7 +109,7 @@ const AdminDashboardContent: React.FC = () => {
                 });
                 setTransactions(updatedData as Transaction[]);
             } else {
-                setTransactions(data || []);
+                setTransactions(data as Transaction[] || []);
             }
         } catch (error) {
             console.error('Error fetching transactions:', error);
@@ -346,7 +347,14 @@ const AdminDashboardContent: React.FC = () => {
         <>
             <div className="space-y-8 animate-fade-in w-full">
                 {/* Stats Overview - Only show on Dashboard */}
-                {isDashboard && <StatsOverview stats={stats} />}
+                {isDashboard && (
+                    <>
+                        <StatsOverview stats={stats} />
+                        <div className="mt-8">
+                            <CalendarStats />
+                        </div>
+                    </>
+                )}
 
                 {/* Users View */}
                 {isUsers && (

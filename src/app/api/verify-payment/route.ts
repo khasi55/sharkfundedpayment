@@ -11,6 +11,7 @@ const VerifyPaymentSchema = z.object({
     orderId: z.string().optional(),
     email: z.string().email().optional().or(z.literal('')),
     name: z.string().optional(),
+    merchantUpiId: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const { utr, amount, orderId, email, name } = validation.data;
+        const { utr, amount, orderId, email, name, merchantUpiId } = validation.data;
         const amountStr = String(amount);
 
         const handleEmailSending = async (transaction: any) => {
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
                 utr,
                 amount: transaction?.amount || amountStr,
                 status,
+                merchant_upi_id: merchantUpiId, // Pass back to merchant
                 timestamp: new Date().toISOString()
             };
 
@@ -123,6 +125,16 @@ export async function POST(request: Request) {
                     transaction = data;
                 }
 
+                // Update transaction with merchant_upi_id if available
+                if (transaction && merchantUpiId) {
+                    await supabase
+                        .from('transactions')
+                        .update({ merchant_upi_id: merchantUpiId })
+                        .eq('id', transaction.id);
+
+                    transaction.merchant_upi_id = merchantUpiId;
+                }
+
                 await handleEmailSending(transaction);
                 await handleWebhookTrigger(transaction, 'verified');
 
@@ -149,7 +161,8 @@ export async function POST(request: Request) {
                                     ...tx.customer_details,
                                     failure_reason: failureReason,
                                     failed_attempt_utr: utr
-                                }
+                                },
+                                merchant_upi_id: merchantUpiId
                             })
                             .eq('id', orderId);
 
@@ -174,7 +187,8 @@ export async function POST(request: Request) {
                 amount: amountStr,
                 status: 'verified',
                 order_id: orderId,
-                customer_details: { email, name }
+                customer_details: { email, name },
+                merchant_upi_id: merchantUpiId
             };
 
             await handleEmailSending(mockTransaction);
@@ -183,7 +197,7 @@ export async function POST(request: Request) {
             return NextResponse.json({
                 success: true,
                 message: 'Payment verified (MOCKED)',
-                data: { utr, amount, status: 'verified' }
+                data: { utr, amount, status: 'verified', merchant_upi_id: merchantUpiId }
             });
         }
 
@@ -203,14 +217,15 @@ export async function POST(request: Request) {
                     .update({
                         utr: utr,
                         status: 'pending_payment',
-                        customer_details: newDetails
+                        customer_details: newDetails,
+                        merchant_upi_id: merchantUpiId
                     })
                     .eq('id', orderId);
             } else {
                 // Fallback update if read fails (shouldn't happen)
                 await supabase
                     .from('transactions')
-                    .update({ utr: utr, status: 'pending_payment' })
+                    .update({ utr: utr, status: 'pending_payment', merchant_upi_id: merchantUpiId })
                     .eq('id', orderId);
             }
         }

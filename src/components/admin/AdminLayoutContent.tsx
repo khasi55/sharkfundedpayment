@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Users, CreditCard, LogOut, ShieldCheck, Menu, X, Activity, Key, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, LogOut, ShieldCheck, Menu, X, Activity, Key, MessageSquare, Landmark } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 import ConfirmationModal from '@/components/ConfirmationModal';
@@ -112,6 +112,16 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                                 >
                                     <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/transactions') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                                     <span className="font-medium text-sm">Transactions</span>
+                                </Link>
+                            )}
+                            {hasPermission('transactions') && (
+                                <Link
+                                    href="/sharkfunded2logintoadminwithpermission/bank-stats"
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/bank-stats') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                                >
+                                    <Landmark size={20} className={isActive('/sharkfunded2logintoadminwithpermission/bank-stats') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                    <span className="font-medium text-sm">Bank Stats</span>
                                 </Link>
                             )}
                             {hasPermission('webhook-logs') && (

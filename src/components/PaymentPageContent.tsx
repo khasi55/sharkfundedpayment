@@ -287,7 +287,8 @@ export default function PaymentPageContent() {
                     amount: state.amount,
                     orderId: sessionId, // Pass Session ID to backend for tracking
                     email: state.email,
-                    name: state.name
+                    name: state.name,
+                    merchantUpiId: UPI_ID // Pass selected merchant UPI
                 }, {
                     headers: {
                         'Content-Type': 'application/json',
@@ -557,7 +558,7 @@ export default function PaymentPageContent() {
                     table: 'transactions',
                     filter: `id=eq.${sessionId}` // Listen specifically for this PK ID
                 },
-                (payload) => {
+                (payload: any) => {
 
                     const newStatus = payload.new.status;
                     const newOrderId = payload.new.order_id;

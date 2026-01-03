@@ -11,6 +11,7 @@ export interface Transaction {
         email: string;
         failure_reason?: string;
     };
+    merchant_upi_id?: string;
 }
 
 export interface UserStat {

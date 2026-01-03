@@ -3,12 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
     /* config options here */
     reactStrictMode: true,
-    experimental: {
-        optimizePackageImports: ['lucide-react', '@supabase/supabase-js'],
-    },
-    turbopack: {
-        root: process.cwd(),
-    },
+
+
     async headers() {
         return [
             {

@@ -144,7 +144,8 @@ export default function TransactionsTable({
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Date & Time</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Order ID</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">UTR</th>
-                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[20%]">Customer</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Bank / UPI</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Customer</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Amount</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Status</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Proof</th>
@@ -154,7 +155,7 @@ export default function TransactionsTable({
                     <tbody className="divide-y divide-slate-100 bg-white">
                         {loading ? (
                             <tr>
-                                <td colSpan={8} className="px-6 py-24 text-center">
+                                <td colSpan={9} className="px-6 py-24 text-center">
                                     <div className="flex flex-col items-center gap-3">
                                         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                         <p className="text-slate-500 font-medium">Loading transactions...</p>
@@ -163,7 +164,7 @@ export default function TransactionsTable({
                             </tr>
                         ) : transactions.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="px-6 py-24 text-center">
+                                <td colSpan={9} className="px-6 py-24 text-center">
                                     <div className="flex flex-col items-center gap-3 opacity-50">
                                         <Search size={48} className="text-slate-300" />
                                         <p className="text-slate-500 font-medium">No transactions found</p>
@@ -185,6 +186,11 @@ export default function TransactionsTable({
                                     <td className="px-6 py-4">
                                         <span className="font-mono text-xs text-slate-600 block truncate max-w-[120px]" title={txn.utr}>
                                             {txn.utr}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="text-xs font-medium text-slate-600 block truncate max-w-[150px]" title={txn.merchant_upi_id}>
+                                            {txn.merchant_upi_id || '-'}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4">
