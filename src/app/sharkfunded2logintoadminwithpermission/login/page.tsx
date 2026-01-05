@@ -28,8 +28,10 @@ const AdminLoginPage: React.FC = () => {
             if (data && data.success) {
                 // Login successful
                 localStorage.setItem('admin_user', JSON.stringify(data.user));
-                // Set cookie for middleware
-                document.cookie = `admin_session=${JSON.stringify(data.user)}; path=/; max-age=86400; SameSite=Strict; Secure`;
+                // Set cookie for middleware with proper attributes
+                const isProduction = process.env.NODE_ENV === 'production';
+                const cookieValue = encodeURIComponent(JSON.stringify(data.user));
+                document.cookie = `admin_session=${cookieValue}; path=/; max-age=86400; SameSite=Lax; ${isProduction ? 'Secure' : ''}`;
                 router.push('/sharkfunded2logintoadminwithpermission');
             } else {
                 setError(data?.message || 'Invalid credentials');

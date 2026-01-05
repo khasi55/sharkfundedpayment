@@ -12,6 +12,9 @@ import TransactionDetailModal from './dashboard/TransactionDetailModal';
 import ApiLogsTable from './dashboard/ApiLogsTable';
 import CalendarStats from './dashboard/CalendarStats';
 import CreatePaymentLinkModal from './dashboard/CreatePaymentLinkModal';
+import RevenueChart from './dashboard/RevenueChart';
+import SuccessRate from './dashboard/SuccessRate';
+import RecentActivity from './dashboard/RecentActivity';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
@@ -350,12 +353,31 @@ const AdminDashboardContent: React.FC = () => {
             <div className="space-y-8 animate-fade-in w-full">
                 {/* Stats Overview - Only show on Dashboard */}
                 {isDashboard && (
-                    <>
+                    <div className="space-y-6">
                         <StatsOverview stats={stats} />
-                        <div className="mt-8">
+
+                        {/* New Bento Grid Layout */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                            {/* Revenue Chart (8 cols) */}
+                            <div className="lg:col-span-8 min-h-[350px]">
+                                <RevenueChart transactions={transactions} />
+                            </div>
+
+                            {/* Right Column (4 cols) - Stacked vertically */}
+                            <div className="lg:col-span-4 flex flex-col gap-6">
+                                <div className="flex-1 min-h-[180px]">
+                                    <SuccessRate stats={stats} />
+                                </div>
+                                <div className="flex-[2] min-h-[300px]">
+                                    <RecentActivity transactions={transactions} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-2">
                             <CalendarStats />
                         </div>
-                    </>
+                    </div>
                 )}
 
                 {/* Users View */}

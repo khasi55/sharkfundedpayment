@@ -19,8 +19,8 @@ export default function TransactionDetailModal({
 }: TransactionDetailModalProps) {
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md p-4 animate-fade-in" onClick={onClose}>
-            <div className="relative max-w-7xl max-h-[90vh] w-full bg-white rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20 flex flex-col lg:flex-row" onClick={e => e.stopPropagation()}>
-                <div className="absolute top-4 right-4 z-10 lg:hidden">
+            <div className="relative max-w-7xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/20 flex flex-col lg:flex-row h-[85vh] lg:h-auto lg:max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-4 right-4 z-50 lg:hidden">
                     <button
                         onClick={onClose}
                         className="p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-all"
@@ -30,7 +30,7 @@ export default function TransactionDetailModal({
                 </div>
 
                 {/* Left Column: Details */}
-                <div className="w-full lg:w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col max-h-[40vh] lg:max-h-full overflow-y-auto">
+                <div className="w-full lg:w-1/3 bg-slate-50 border-r border-slate-200 flex flex-col max-h-[45%] lg:max-h-full overflow-y-auto shrink-0">
                     <div className="p-6 border-b border-slate-200 bg-white sticky top-0 z-10">
                         <h3 className="text-lg font-bold text-slate-900">Transaction Details</h3>
                         <p className="text-sm text-slate-500">Review details carefully before approving.</p>
@@ -85,8 +85,8 @@ export default function TransactionDetailModal({
 
                             {transaction.customer_details?.failure_reason && (
                                 <div className={`p-3 border rounded-lg ${transaction.status === 'cancelled'
-                                        ? 'bg-orange-50 border-orange-100'
-                                        : 'bg-red-50 border-red-100'
+                                    ? 'bg-orange-50 border-orange-100'
+                                    : 'bg-red-50 border-red-100'
                                     }`}>
                                     <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${transaction.status === 'cancelled' ? 'text-orange-600' : 'text-red-600'
                                         }`}>
@@ -125,7 +125,7 @@ export default function TransactionDetailModal({
                 </div>
 
                 {/* Right Column: Image */}
-                <div className="flex-1 bg-slate-900 overflow-auto relative flex flex-col h-[60vh] lg:h-auto">
+                <div className="flex-1 bg-slate-900 overflow-hidden relative flex flex-col min-h-0">
                     <div className="absolute top-4 right-4 z-10 hidden lg:block">
                         <button
                             onClick={onClose}
