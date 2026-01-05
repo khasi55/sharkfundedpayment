@@ -19,6 +19,7 @@ interface TransactionsTableProps {
     getStatusStyle: (status: string) => string;
     setSelectedTransaction: (transaction: Transaction) => void;
     initiateStatusUpdate: (id: string, status: 'verified' | 'rejected') => void;
+    onCreateLink?: () => void;
 }
 
 export default function TransactionsTable({
@@ -37,7 +38,8 @@ export default function TransactionsTable({
     formatTime,
     getStatusStyle,
     setSelectedTransaction,
-    initiateStatusUpdate
+    initiateStatusUpdate,
+    onCreateLink
 }: TransactionsTableProps) {
     const [showDateFilter, setShowDateFilter] = useState(false);
 
@@ -117,7 +119,19 @@ export default function TransactionsTable({
                     >
                         <Download size={18} />
                         <span className="text-sm font-medium hidden sm:inline">Export</span>
+                        <span className="text-sm font-medium hidden sm:inline">Export</span>
                     </button>
+
+                    {onCreateLink && (
+                        <button
+                            onClick={onCreateLink}
+                            className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+                            title="Create Payment Link"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                            <span className="text-sm font-bold hidden sm:inline">Create Link</span>
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 no-scrollbar">

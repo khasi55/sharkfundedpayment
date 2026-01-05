@@ -189,6 +189,14 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                                 <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/admin-management') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
                                 <span className="font-medium text-sm">Admin Management</span>
                             </Link>
+                            <Link
+                                href="/sharkfunded2logintoadminwithpermission/payment-settings"
+                                onClick={() => setIsMobileMenuOpen(false)}
+                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                                <span className="font-medium text-sm">Payment Settings</span>
+                            </Link>
                         </>
                     )}
                 </nav>

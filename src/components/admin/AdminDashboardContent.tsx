@@ -11,6 +11,7 @@ import TransactionsTable from './dashboard/TransactionsTable';
 import TransactionDetailModal from './dashboard/TransactionDetailModal';
 import ApiLogsTable from './dashboard/ApiLogsTable';
 import CalendarStats from './dashboard/CalendarStats';
+import CreatePaymentLinkModal from './dashboard/CreatePaymentLinkModal';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
@@ -26,6 +27,7 @@ const AdminDashboardContent: React.FC = () => {
     const [customDate, setCustomDate] = useState('');
     const [search, setSearch] = useState('');
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+    const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
 
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState<{
@@ -388,6 +390,7 @@ const AdminDashboardContent: React.FC = () => {
                         getStatusStyle={getStatusStyle}
                         setSelectedTransaction={setSelectedTransaction}
                         initiateStatusUpdate={initiateStatusUpdate}
+                        onCreateLink={() => setShowCreateLinkModal(true)}
                     />
                 )}
 
@@ -405,6 +408,20 @@ const AdminDashboardContent: React.FC = () => {
                     formatDate={formatDate}
                     formatTime={formatTime}
                     initiateStatusUpdate={initiateStatusUpdate}
+                />
+            )}
+
+            {/* Create Link Modal */}
+            {showCreateLinkModal && (
+                <CreatePaymentLinkModal
+                    onClose={() => setShowCreateLinkModal(false)}
+                    onSuccess={() => {
+                        // Refresh transactions list to show the new pending payment
+                        fetchTransactions();
+                        // Ideally we keep the modal open to show the link, but the modal handles its own "success state" with the link.
+                        // We don't close it automatically on success so user can copy link.
+                        // We just trigger data refresh.
+                    }}
                 />
             )}
         </>
