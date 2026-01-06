@@ -37,13 +37,19 @@ const OtpsContent: React.FC = () => {
             )
             .subscribe();
 
+        // Polling fallback (5 seconds)
+        const interval = setInterval(() => {
+            fetchLogs(false);
+        }, 5000);
+
         return () => {
             supabase.removeChannel(subscription);
+            clearInterval(interval);
         };
     }, []);
 
-    const fetchLogs = async () => {
-        setLoading(true);
+    const fetchLogs = async (showLoading = true) => {
+        if (showLoading) setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('webhook_logs')
@@ -57,7 +63,7 @@ const OtpsContent: React.FC = () => {
         } catch (error) {
             console.error('Error fetching OTP logs:', error);
         } finally {
-            setLoading(false);
+            if (showLoading) setLoading(false);
         }
     };
 
@@ -96,7 +102,7 @@ const OtpsContent: React.FC = () => {
                     <p className="text-sm text-slate-500 mt-1">Monitor and search received OTP codes</p>
                 </div>
                 <button
-                    onClick={fetchLogs}
+                    onClick={() => fetchLogs(true)}
                     className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 hover:border-slate-300 transition-all shadow-sm flex items-center gap-2 text-sm font-medium"
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
