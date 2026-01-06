@@ -15,6 +15,7 @@ import CreatePaymentLinkModal from './dashboard/CreatePaymentLinkModal';
 import RevenueChart from './dashboard/RevenueChart';
 import SuccessRate from './dashboard/SuccessRate';
 import RecentActivity from './dashboard/RecentActivity';
+import ConfirmationModal from './dashboard/ConfirmationModal';
 
 const AdminDashboardContent: React.FC = () => {
     const pathname = usePathname();
@@ -124,10 +125,18 @@ const AdminDashboardContent: React.FC = () => {
     };
 
     const initiateStatusUpdate = (id: string, newStatus: 'verified' | 'rejected') => {
-        // Directly update status without extra confirmation modal for now, as requested to match previous flow 
-        // or keep standard flow. The original had a confirmation modal but implemented it via status update directly in the table
-        // We will implement the update logic directly here for simplicity as the modal was internal.
-        handleStatusUpdate(id, newStatus);
+        setConfirmModal({
+            isOpen: true,
+            type: newStatus,
+            id: id
+        });
+    };
+
+    const handleConfirmAction = () => {
+        if (confirmModal.id && confirmModal.type) {
+            handleStatusUpdate(confirmModal.id, confirmModal.type);
+            setConfirmModal({ isOpen: false, type: null, id: null });
+        }
     };
 
     const handleStatusUpdate = async (id: string, type: 'verified' | 'rejected') => {
@@ -446,6 +455,24 @@ const AdminDashboardContent: React.FC = () => {
                     }}
                 />
             )}
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ isOpen: false, type: null, id: null })}
+                onConfirm={handleConfirmAction}
+                title={confirmModal.type === 'verified' ? 'Approve Transaction' : 'Reject Transaction'}
+                message={(() => {
+                    const txn = transactions.find(t => t.id === confirmModal.id);
+                    if (confirmModal.type === 'verified') {
+                        if (!txn?.screenshot_url || txn.status === 'expired' || txn.status === 'pending_payment') {
+                            return '⚠️ Warning: No payment proof attached. Please verify with your bank statement before approving. Are you sure you want to approve?';
+                        }
+                        return 'Are you sure you want to approve this transaction? This will mark it as success and notify the user.';
+                    }
+                    return 'Are you sure you want to reject this transaction? This action cannot be undone.';
+                })()}
+                type={confirmModal.type === 'verified' ? 'approve' : 'reject'}
+            />
         </>
     );
 };

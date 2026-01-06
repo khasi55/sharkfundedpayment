@@ -229,7 +229,7 @@ export default function TransactionsTable({
                                         <div className="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-3 rounded-xl border border-slate-100">
                                             <div>
                                                 <p className="text-[10px] text-slate-400 uppercase font-bold">UTR</p>
-                                                <p className="font-mono text-slate-700 truncate">{txn.utr || '-'}</p>
+                                                <p className="font-mono text-slate-700 break-all">{txn.utr || '-'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-[10px] text-slate-400 uppercase font-bold">Email</p>
@@ -250,7 +250,7 @@ export default function TransactionsTable({
                                                     <Eye size={16} /> View Proof
                                                 </button>
                                             )}
-                                            {txn.status === 'pending_manual_verification' && (
+                                            {(txn.status === 'pending_manual_verification' || txn.status === 'pending_payment' || txn.status === 'expired') && (
                                                 <div className="flex gap-2 flex-1">
                                                     <button
                                                         onClick={() => initiateStatusUpdate(txn.id, 'verified')}
@@ -302,13 +302,13 @@ export default function TransactionsTable({
                                             <div className="text-[10px] text-slate-400 font-medium">INR</div>
                                         </div>
                                         <div className="col-span-1">
-                                            <div className="font-mono text-xs text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded w-fit max-w-full truncate">
+                                            <div className="font-mono text-xs text-slate-600 bg-white border border-slate-200 px-2 py-1 rounded w-fit break-all">
                                                 {txn.utr || '-'}
                                             </div>
                                         </div>
                                         <div className="col-span-2">
                                             <StatusBadge status={txn.status} />
-                                            {(txn.status === 'failed' || txn.status === 'rejected') && txn.customer_details?.failure_reason && (
+                                            {(txn.status === 'failed' || txn.status === 'rejected' || txn.status === 'cancelled') && txn.customer_details?.failure_reason && (
                                                 <div className="text-[10px] text-rose-500 mt-1 font-medium truncate" title={txn.customer_details.failure_reason}>
                                                     {txn.customer_details.failure_reason}
                                                 </div>
@@ -325,7 +325,7 @@ export default function TransactionsTable({
                                                     View
                                                 </button>
                                             )}
-                                            {txn.status === 'pending_manual_verification' ? (
+                                            {(txn.status === 'pending_manual_verification' || txn.status === 'pending_payment' || txn.status === 'expired') ? (
                                                 <div className="flex gap-1">
                                                     <button
                                                         onClick={() => initiateStatusUpdate(txn.id, 'verified')}
