@@ -13,6 +13,36 @@ interface UsersTableProps {
 }
 
 export default function UsersTable({ users, search, setSearch, formatDate, formatTime, filter, setFilter }: UsersTableProps) {
+    const handleExport = () => {
+        // Define headers
+        const headers = ['Name', 'Email', 'Total Spend', 'Total Orders', 'Verified Orders', 'Last Active', 'Status'];
+
+        // Convert data to CSV format
+        const csvContent = [
+            headers.join(','),
+            ...users.map(user => [
+                `"${user.name}"`,
+                `"${user.email}"`,
+                user.totalSpend,
+                user.totalOrders,
+                user.verifiedOrders,
+                `"${formatDate(user.lastActive)} ${formatTime(user.lastActive)}"`,
+                user.status
+            ].join(','))
+        ].join('\n');
+
+        // Create blob and download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `users_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
             <div className="p-6 border-b border-slate-100 flex flex-col lg:flex-row gap-4 items-center justify-between bg-slate-50/30">
@@ -30,8 +60,8 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                 </div>
 
                 {/* Filter Actions */}
-                {setFilter && (
-                    <div className="flex items-center gap-3 w-full lg:w-auto">
+                <div className="flex items-center gap-3 w-full lg:w-auto">
+                    {setFilter && (
                         <div className="relative">
                             <select
                                 value={filter}
@@ -45,8 +75,17 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+
+                    <button
+                        onClick={handleExport}
+                        className="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all text-slate-600 font-bold text-sm shadow-sm active:scale-95"
+                    >
+                        <Users size={16} className="text-slate-500" />
+                        <span>Export CSV</span>
+                    </button>
+
+                </div>
             </div>
 
             <div className="overflow-x-auto w-full">
