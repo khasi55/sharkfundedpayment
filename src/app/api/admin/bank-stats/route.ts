@@ -3,9 +3,11 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
     try {
+        // Only fetch verified/confirmed transactions
         const { data: transactions, error } = await supabase
             .from('transactions')
-            .select('amount, merchant_upi_id, status');
+            .select('amount, merchant_upi_id, status')
+            .eq('status', 'verified');
 
         if (error) throw error;
 
@@ -19,17 +21,9 @@ export async function POST(request: Request) {
                 stats[upiId] = { totalAmount: 0, count: 0 };
             }
 
-            // Only count verified transactions for amount ?? 
-            // Usually stats show "verified" volume. Let's do verified only for volume, but maybe total count for count?
-            // "total transction volume and count"
-            // Let's count everything but maybe mostly care about verified for money.
-            // Let's simplify: Total Verified Volume, Total Verified Count, Total Attempted Count.
-
+            // Count only verified/confirmed transactions
             stats[upiId].count += 1;
-
-            if (txn.status === 'verified') {
-                stats[upiId].totalAmount += Number(txn.amount);
-            }
+            stats[upiId].totalAmount += Number(txn.amount);
         });
 
         const formattedStats = Object.entries(stats).map(([upiId, data]) => ({

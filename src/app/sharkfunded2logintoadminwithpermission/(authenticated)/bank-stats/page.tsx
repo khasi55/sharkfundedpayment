@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Landmark, ArrowUpRight, CreditCard, Wallet, Loader2 } from 'lucide-react';
+import { Landmark, Wallet, Loader2 } from 'lucide-react';
 
 interface BankStat {
     upiId: string;
