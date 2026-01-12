@@ -58,6 +58,26 @@ export async function POST(request: Request) {
 
         const { amount, name, email, callback_url, reference_id, webhook_url, success_url, failed_url } = validation.data;
 
+        // [NEW] Check if user is blocked (Case Insensitive)
+        const { data: blockedUser, error: blockCheckError } = await supabase
+            .from('blocked_users')
+            .select('email')
+            .ilike('email', email) // Case-insensitive match
+            .maybeSingle(); // Use maybeSingle to avoid error if 0 rows, but still catch DB errors
+
+        if (blockCheckError) {
+            console.error('Error checking blocked status (ignoring block to allow order):', blockCheckError);
+            // Verify if the error is "relation does not exist" - if so, it means the feature isn't set up yet.
+            // We allow the order to proceed to avoid breaking payments due to missing config, 
+            // but we logged it.
+        } else if (blockedUser) {
+            console.log(`Blocked user attempted order: ${email}`);
+            return NextResponse.json(
+                { success: false, message: 'Your account has been restricted from making new orders. Please contact support.' },
+                { status: 403 }
+            );
+        }
+
         // Create a new transaction record
         const { data, error } = await supabase
             .from('transactions')

@@ -6,16 +6,19 @@ import { sendMerchantWebhook } from '@/utils/webhooks';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { transactionId, status } = body;
+        const { transactionId, status, approvedBy } = body;
 
         if (!transactionId || !status) {
             return NextResponse.json({ success: false, message: 'Transaction ID and Status are required' }, { status: 400 });
         }
 
-        // 1. Update Transaction Status
+        // 1. Update Transaction Status & Approver
+        const updateData: any = { status: status };
+        if (approvedBy) updateData.approved_by = approvedBy;
+
         const { data: transaction, error } = await supabase
             .from('transactions')
-            .update({ status: status })
+            .update(updateData)
             .eq('id', transactionId)
             .select()
             .single();

@@ -12,6 +12,7 @@ export interface Transaction {
         failure_reason?: string;
     };
     merchant_upi_id?: string;
+    approved_by?: string; // [NEW] Track who approved/rejected
 }
 
 export interface UserStat {
@@ -22,6 +23,7 @@ export interface UserStat {
     verifiedOrders: number;
     lastActive: string;
     status: 'active' | 'inactive';
+    isBlocked?: boolean;
 }
 
 export interface DashboardStats {

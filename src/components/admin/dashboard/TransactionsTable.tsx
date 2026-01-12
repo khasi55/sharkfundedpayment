@@ -313,6 +313,13 @@ export default function TransactionsTable({
                                                     {txn.customer_details.failure_reason}
                                                 </div>
                                             )}
+                                            {/* [NEW] Show Approver */}
+                                            {txn.approved_by && (txn.status === 'verified' || txn.status === 'rejected') && (
+                                                <div className="text-[10px] text-slate-400 mt-0.5 font-medium truncate flex items-center gap-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                                                    By: {txn.approved_by}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="col-span-2 text-right flex items-center justify-end gap-2 whitespace-nowrap">
                                             {txn.screenshot_url && (

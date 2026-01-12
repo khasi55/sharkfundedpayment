@@ -26,6 +26,7 @@ const AdminDashboardContent: React.FC = () => {
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
+    const [blockedEmails, setBlockedEmails] = useState<string[]>([]); // [NEW] Track blocked users
     const [filter, setFilter] = useState('all');
     const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'week', 'month', 'custom'
     const [customDate, setCustomDate] = useState('');
@@ -42,6 +43,7 @@ const AdminDashboardContent: React.FC = () => {
 
     useEffect(() => {
         fetchTransactions();
+        fetchBlockedUsers(); // [NEW]
 
         // [NEW] Trigger lazy cleanup of abandoned sessions
         axios.post('/api/admin/expire-sessions').catch(err => console.warn('Background cleanup failed:', err));
@@ -124,6 +126,45 @@ const AdminDashboardContent: React.FC = () => {
         }
     };
 
+    // [NEW] Fetch blocked users
+    const fetchBlockedUsers = async () => {
+        try {
+            const { data } = await axios.get('/api/admin/block-user');
+            if (data.success) {
+                setBlockedEmails(data.blockedUsers.map((u: any) => u.email));
+            }
+        } catch (error) {
+            console.error('Error fetching blocked users:', error);
+        }
+    };
+
+    // [NEW] Block/Unblock Handlers
+    const handleBlockUser = async (email: string) => {
+        if (!confirm(`Are you sure you want to block ${email}? They will not be able to create new orders.`)) return;
+        try {
+            const { data } = await axios.post('/api/admin/block-user', { email });
+            if (data.success) {
+                setBlockedEmails(prev => [...prev, email]);
+                // alert('User blocked successfully');
+            }
+        } catch (error) {
+            alert('Failed to block user');
+        }
+    };
+
+    const handleUnblockUser = async (email: string) => {
+        if (!confirm(`Are you sure you want to unblock ${email}?`)) return;
+        try {
+            const { data } = await axios.delete(`/api/admin/block-user?email=${email}`);
+            if (data.success) {
+                setBlockedEmails(prev => prev.filter(e => e !== email));
+                // alert('User unblocked successfully');
+            }
+        } catch (error) {
+            alert('Failed to unblock user');
+        }
+    };
+
     const initiateStatusUpdate = (id: string, newStatus: 'verified' | 'rejected') => {
         setConfirmModal({
             isOpen: true,
@@ -141,31 +182,67 @@ const AdminDashboardContent: React.FC = () => {
 
     const handleStatusUpdate = async (id: string, type: 'verified' | 'rejected') => {
         try {
+            // [NEW] Get current admin email from LocalStorage (since we use custom RPC login)
+            let adminEmail = 'Unknown Admin';
+            if (typeof window !== 'undefined') {
+                const storedUser = localStorage.getItem('admin_user');
+                if (storedUser) {
+                    try {
+                        const userObj = JSON.parse(storedUser);
+                        adminEmail = userObj.email || userObj.user_email || 'Unknown Admin';
+                    } catch (e) {
+                        console.error('Error parsing admin user:', e);
+                    }
+                }
+            }
+
             // 1. Try API (Best for security + email)
             const response = await axios.post('/api/admin/update-status', {
                 transactionId: id,
-                status: type
+                status: type,
+                approvedBy: adminEmail // [NEW]
             });
 
             if (response.data.success) {
-                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: type } : t));
+                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: type, approved_by: adminEmail } : t));
             } else {
                 throw new Error(response.data.message);
             }
+
+            // 2. No fallback needed if API succeeds. 
+            // If API fails, we catch below. We should NOT try client-side update as fallback 
+            // because we want to enforce the API logic (email sending, logging, etc).
+            // But if the user insisted on previous fallback logic, I will keep it consistent 
+            // with previous implementation if API fails? 
+            // Actually, the previous code had specific fallback logic in the catch block. 
+            // To be safe and minimal, I will retain the structure but ensure approvedBy is used.
+
         } catch (error) {
             console.warn('API update failed, falling back to client-side update:', error);
 
             // 2. Fallback: Client-side update
             try {
+                // Get admin email again for fallback scope
+                let adminEmail = 'Unknown Admin';
+                if (typeof window !== 'undefined') {
+                    const storedUser = localStorage.getItem('admin_user');
+                    if (storedUser) {
+                        try {
+                            const userObj = JSON.parse(storedUser);
+                            adminEmail = userObj.email || userObj.user_email || 'Unknown Admin';
+                        } catch (e) { }
+                    }
+                }
+
                 const { error: dbError } = await supabase
                     .from('transactions')
-                    .update({ status: type })
+                    .update({ status: type, approved_by: adminEmail })
                     .eq('id', id);
 
                 if (dbError) throw dbError;
 
                 // Optimistic update
-                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: type } : t));
+                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: type, approved_by: adminEmail } : t));
 
                 // 3. If verified, trigger email via receipt API
                 if (type === 'verified') {
@@ -230,11 +307,16 @@ const AdminDashboardContent: React.FC = () => {
                     totalOrders: 0,
                     verifiedOrders: 0,
                     lastActive: t.created_at,
-                    status: 'active'
+                    status: 'active',
+                    isBlocked: blockedEmails.includes(email) // [NEW]
                 });
             }
 
+            // Update blocked status dynamically if it changed
+            // Update blocked status dynamically if it changed
             const user = userMap.get(email)!;
+            user.isBlocked = blockedEmails.includes(email);
+
             if (t.status === 'verified') {
                 user.totalSpend += Number(t.amount);
                 user.verifiedOrders += 1;
@@ -246,7 +328,7 @@ const AdminDashboardContent: React.FC = () => {
         });
 
         return Array.from(userMap.values()).sort((a, b) => b.totalSpend - a.totalSpend);
-    }, [transactions]);
+    }, [transactions, blockedEmails]); // [NEW] Depend on blockedEmails
 
     const filteredUsers = users.filter(u => {
         const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -399,6 +481,8 @@ const AdminDashboardContent: React.FC = () => {
                         setFilter={setUserFilter}
                         formatDate={formatDate}
                         formatTime={formatTime}
+                        onBlock={handleBlockUser} // [NEW]
+                        onUnblock={handleUnblockUser} // [NEW]
                     />
                 )}
 

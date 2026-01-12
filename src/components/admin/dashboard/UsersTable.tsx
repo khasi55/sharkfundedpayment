@@ -10,12 +10,14 @@ interface UsersTableProps {
     formatTime: (dateString: string) => string;
     filter?: string;
     setFilter?: (value: string) => void;
+    onBlock?: (email: string) => Promise<void>; // [NEW]
+    onUnblock?: (email: string) => Promise<void>; // [NEW]
 }
 
-export default function UsersTable({ users, search, setSearch, formatDate, formatTime, filter, setFilter }: UsersTableProps) {
+export default function UsersTable({ users, search, setSearch, formatDate, formatTime, filter, setFilter, onBlock, onUnblock }: UsersTableProps) {
     const handleExport = () => {
         // Define headers
-        const headers = ['Name', 'Email', 'Total Spend', 'Total Orders', 'Verified Orders', 'Last Active', 'Status'];
+        const headers = ['Name', 'Email', 'Total Spend', 'Total Orders', 'Verified Orders', 'Last Active', 'Status', 'Blocked'];
 
         // Convert data to CSV format
         const csvContent = [
@@ -27,7 +29,8 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                 user.totalOrders,
                 user.verifiedOrders,
                 `"${formatDate(user.lastActive)} ${formatTime(user.lastActive)}"`,
-                user.status
+                user.status,
+                user.isBlocked ? 'Yes' : 'No'
             ].join(','))
         ].join('\n');
 
@@ -92,18 +95,19 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                 <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
-                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[25%]">User</th>
-                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Total Spend</th>
-                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Total Orders</th>
-                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[15%]">Verified Orders</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[20%]">User</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Total Spend</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Total Orders</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Verified Orders</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[20%]">Last Active</th>
                             <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[10%]">Status</th>
+                            <th className="px-6 py-4 font-semibold text-slate-500 uppercase tracking-wider text-[11px] w-[20%]">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
                         {users.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-24 text-center">
+                                <td colSpan={7} className="px-6 py-24 text-center">
                                     <div className="flex flex-col items-center gap-3 opacity-50">
                                         <Users size={48} className="text-slate-300" />
                                         <p className="text-slate-500 font-medium">No users found</p>
@@ -121,6 +125,7 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                                             <div>
                                                 <div className="font-bold text-slate-900">{user.name}</div>
                                                 <div className="text-xs text-slate-500">{user.email}</div>
+                                                {user.isBlocked && <span className="text-[10px] text-red-600 font-bold uppercase tracking-wider bg-red-50 px-1 py-0.5 rounded border border-red-100 ml-1">Blocked</span>}
                                             </div>
                                         </div>
                                     </td>
@@ -144,9 +149,28 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                                         <div className="text-xs text-slate-400">{formatTime(user.lastActive)}</div>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                            Active
+                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${user.isBlocked ? 'bg-red-50 text-red-700 border-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-100'}`}>
+                                            {user.isBlocked ? 'Blocked' : 'Active'}
                                         </span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            {user.isBlocked ? (
+                                                <button
+                                                    onClick={() => onUnblock && onUnblock(user.email)}
+                                                    className="px-3 py-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                                                >
+                                                    Unblock
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onBlock && onBlock(user.email)}
+                                                    className="px-3 py-1.5 text-xs font-bold text-red-700 bg-red-50 rounded-lg border border-red-100 hover:bg-red-100 transition-colors"
+                                                >
+                                                    Block
+                                                </button>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             ))
