@@ -9,7 +9,9 @@ export default function WidgetCheckoutPage() {
             {/* The PaymentPageContent handles the logic. 
                 We might want to ensure it fits well in an iframe. 
                 For now, we just simple render it. */}
-            <PaymentPageContent />
+            <React.Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+                <PaymentPageContent />
+            </React.Suspense>
         </div>
     );
 }
