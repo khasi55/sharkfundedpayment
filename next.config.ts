@@ -31,6 +31,19 @@ const nextConfig: NextConfig = {
                         value: 'origin-when-cross-origin'
                     }
                 ]
+            },
+            {
+                source: '/widget/:path*',
+                headers: [
+                    {
+                        key: 'X-Frame-Options',
+                        value: 'SAMEORIGIN'
+                    },
+                    {
+                        key: 'Content-Security-Policy',
+                        value: 'frame-ancestors *'
+                    }
+                ]
             }
         ];
     },
