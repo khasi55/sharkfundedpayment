@@ -45,7 +45,17 @@ export function middleware(request: NextRequest) {
         }
     }
 
-    return NextResponse.next();
+    const response = NextResponse.next();
+
+    // ------------------------------------------------------------------------
+    // 3. SECURITY HEADERS
+    // ------------------------------------------------------------------------
+    // Prevent clickjacking on the main app, but allow embedding for the widget
+    if (!path.startsWith('/widget')) {
+        response.headers.set('X-Frame-Options', 'DENY');
+    }
+
+    return response;
 }
 
 export const config = {
