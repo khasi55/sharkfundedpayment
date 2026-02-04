@@ -51,7 +51,7 @@ export function middleware(request: NextRequest) {
     // 3. SECURITY HEADERS
     // ------------------------------------------------------------------------
     // Prevent clickjacking on the main app, but allow embedding for the widget
-    if (!path.startsWith('/widget')) {
+    if (!path.startsWith('/widget') && !path.startsWith('/secure-checkout')) {
         response.headers.set('X-Frame-Options', 'DENY');
     }
 
