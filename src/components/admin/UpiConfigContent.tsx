@@ -152,13 +152,20 @@ export default function UpiConfigContent() {
                     <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Payment Settings</h1>
                     <p className="text-slate-500 text-sm mt-1">Manage UPI IDs and Merchant Names for payment page</p>
                 </div>
-                <button
-                    onClick={handleOpenCreateModal}
-                    className="flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:-translate-y-0.5"
-                >
-                    <Plus size={20} />
-                    <span>Add New UPI ID</span>
-                </button>
+                <div className="flex flex-col items-end gap-2">
+                    <button
+                        disabled
+                        className="flex items-center justify-center gap-2 px-6 py-3.5 bg-slate-200 text-slate-500 font-bold rounded-xl cursor-not-allowed opacity-60"
+                        title="Editing is disabled for security reasons"
+                    >
+                        <Plus size={20} />
+                        <span>Add New UPI ID (Disabled)</span>
+                    </button>
+                    <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-1 rounded-md border border-rose-100 flex items-center gap-1.5 uppercase tracking-wider">
+                        <AlertCircle size={12} />
+                        Hardcoded for Security
+                    </span>
+                </div>
             </div>
 
             {/* Content box */}
@@ -207,18 +214,17 @@ export default function UpiConfigContent() {
                                 filteredConfigs.map((config) => (
                                     <tr key={config.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => handleToggleClick(config)}
+                                            <div
                                                 className={`
-                                                    flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
+                                                    inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider
                                                     ${config.is_active
-                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100 hover:bg-emerald-100'
-                                                        : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'}
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                                        : 'bg-slate-100 text-slate-500 border border-slate-200'}
                                                 `}
                                             >
                                                 <Power size={12} strokeWidth={3} />
                                                 {config.is_active ? 'Active' : 'Inactive'}
-                                            </button>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-slate-900">{config.merchant_name}</div>
@@ -233,16 +239,7 @@ export default function UpiConfigContent() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => {
-                                                        setConfigToDelete(config);
-                                                        setShowDeleteConfirm(true);
-                                                    }}
-                                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                                                    title="Delete Configuration"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
+                                                <span className="text-[10px] text-slate-400 font-medium italic">Read-Only</span>
                                             </div>
                                         </td>
                                     </tr>

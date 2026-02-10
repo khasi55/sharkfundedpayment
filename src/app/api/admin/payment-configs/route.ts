@@ -66,17 +66,24 @@ async function verify2FA(email: string, token: string) {
 }
 
 async function logAction(adminEmail: string, action: string, details: any, req: Request) {
+    console.log(`[AuditLog] Attempting to log action: ${action} for ${adminEmail}`);
     try {
         const ip = req.headers.get('x-forwarded-for') || 'unknown';
 
-        await supabaseAdmin.from('admin_audit_logs').insert({
+        const { error } = await supabaseAdmin.from('admin_audit_logs').insert({
             admin_email: adminEmail,
             action,
             details,
             ip_address: ip
         });
+
+        if (error) {
+            console.error('[AuditLog] Supabase Insert Error:', error);
+        } else {
+            console.log('[AuditLog] Successfully logged action');
+        }
     } catch (e) {
-        console.error('Failed to log action:', e);
+        console.error('[AuditLog] Failed to log action:', e);
     }
 }
 

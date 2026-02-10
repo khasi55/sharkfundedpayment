@@ -46,46 +46,22 @@ export default function PaymentPageContent() {
     const [verificationStatus, setVerificationStatus] = useState('Connecting to bank...');
 
     // Dynamic UPI Config based on session + Toggle State
-    const [upiConfigs, setUpiConfigs] = useState<any[]>(UPI_CONFIGS); // Initialize with static fallback
+    // [ANTI-HACK] Now using hardcoded configs only
+    const [upiConfigs, setUpiConfigs] = useState<any[]>(UPI_CONFIGS);
     const [upiIndex, setUpiIndex] = useState<number>(0);
     const [currentUpiConfig, setCurrentUpiConfig] = useState(getUpiConfigForTransaction(sessionId || urlSessionId || ''));
 
     useEffect(() => {
-        // Fetch active configs from DB
-        const fetchConfigs = async () => {
-            try {
-                const { data } = await supabase
-                    .from('payment_configs')
-                    .select('vpa, merchant_name')
-                    .eq('is_active', true)
-                    .order('created_at', { ascending: false });
+        // [ANTI-HACK] UPI Configs are now hardcoded in src/config/upiConfig.ts
+        // This prevents database-level modifications from affecting the payment page.
+        const sId = sessionId || urlSessionId || '';
+        const config = getUpiConfigForTransaction(sId);
+        setCurrentUpiConfig(config);
 
-                if (data && data.length > 0) {
-                    const mappedConfigs = data.map(d => ({ vpa: d.vpa, merchantName: d.merchant_name }));
-                    setUpiConfigs(mappedConfigs);
+        // Find initial index
+        const index = UPI_CONFIGS.findIndex(c => c.vpa === config.vpa);
+        if (index !== -1) setUpiIndex(index);
 
-                    // Re-calculate initial config based on new list
-                    // Logic from getUpiConfigForTransaction but with dynamic list
-                    const sId = sessionId || urlSessionId || '';
-                    if (!sId) {
-                        setCurrentUpiConfig(mappedConfigs[0]);
-                    } else {
-                        let hash = 0;
-                        for (let i = 0; i < sId.length; i++) {
-                            hash = sId.charCodeAt(i) + ((hash << 5) - hash);
-                        }
-                        const index = Math.abs(hash) % mappedConfigs.length;
-                        setCurrentUpiConfig(mappedConfigs[index]);
-                        setUpiIndex(index);
-                    }
-                }
-            } catch (error) {
-                console.error('Error fetching UPI configs:', error);
-                // Fallback to static is already set in initial state
-            }
-        };
-
-        fetchConfigs();
     }, [sessionId, urlSessionId]);
 
     const handleToggleUpi = () => {

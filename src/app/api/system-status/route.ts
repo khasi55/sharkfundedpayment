@@ -29,7 +29,16 @@ export async function GET() {
             .limit(1)
             .single();
 
-        // 4. Calculate Success Rate (Last 50 transactions)
+        // 4. Check Last SMS (OTP Webhook)
+        const { data: lastSms, error: smsError } = await supabase
+            .from('webhook_logs')
+            .select('created_at')
+            .eq('is_otp', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        // 5. Calculate Success Rate (Last 50 transactions)
         const { data: recentTxns } = await supabase
             .from('transactions')
             .select('status')
@@ -49,7 +58,8 @@ export async function GET() {
                 },
                 payments: {
                     last_webhook: lastWebhook?.created_at || 'Never',
-                    last_transaction: lastTxn?.created_at || 'Never'
+                    last_transaction: lastTxn?.created_at || 'Never',
+                    last_sms: lastSms?.created_at || 'Never'
                 },
                 metrics: {
                     success_rate: successRate

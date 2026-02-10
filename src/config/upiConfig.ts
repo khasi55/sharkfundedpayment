@@ -4,11 +4,15 @@ export interface UpiConfig {
 }
 
 export const UPI_CONFIGS: UpiConfig[] = [
-    { vpa:'adrshine05553@iob', merchantName: 'Shark Funded' },
+    { vpa: 'jaspprosolutions@idbi', merchantName: 'Jaspro Solutions' },
 ];
 
+/**
+ * DETERMINISTIC UPI SELECTION
+ * This ensures we don't fetch from DB (anti-hack)
+ */
 export const getUpiConfigForTransaction = (sessionId: string): UpiConfig => {
-    if (!sessionId) return UPI_CONFIGS[0];
+    if (!sessionId || UPI_CONFIGS.length === 0) return UPI_CONFIGS[0];
 
     // Simple hash function to get a deterministic index from the UUID
     let hash = 0;

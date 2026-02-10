@@ -58,6 +58,7 @@ const SystemStatusContent = () => {
     const successRate = status?.checks?.metrics?.success_rate || '0.0';
     const lastTxnTime = getTimeAgo(status?.checks?.payments?.last_transaction);
     const lastWebhookTime = getTimeAgo(status?.checks?.payments?.last_webhook);
+    const lastSmsTime = getTimeAgo(status?.checks?.payments?.last_sms);
 
     const [lastUpdated, setLastUpdated] = useState<string>('');
 
@@ -142,6 +143,16 @@ const SystemStatusContent = () => {
                                 </div>
                                 <div className="text-xs text-slate-400 mt-1">
                                     {status?.checks?.payments?.last_webhook ? new Date(status.checks.payments.last_webhook).toLocaleString() : '-'}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-slate-100">
+                                <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider mb-1">LAST SMS RECEIVED</div>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-bold text-slate-700">{lastSmsTime}</span>
+                                </div>
+                                <div className="text-xs text-slate-400 mt-1">
+                                    {status?.checks?.payments?.last_sms ? new Date(status.checks.payments.last_sms).toLocaleString() : '-'}
                                 </div>
                             </div>
                         </div>
