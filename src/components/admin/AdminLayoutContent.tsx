@@ -188,26 +188,42 @@ const AdminLayoutContent = ({ children }: { children: React.ReactNode }) => {
                         </Link>
                     )}
 
-                    {isSuperAdmin && (
-                        <>
-                            <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Settings</p>
-                            <Link
-                                href="/sharkfunded2logintoadminwithpermission/admin-management"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/admin-management') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                            >
-                                <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/admin-management') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                                <span className="font-medium text-sm">Admin Management</span>
-                            </Link>
-                            <Link
-                                href="/sharkfunded2logintoadminwithpermission/payment-settings"
-                                onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-                            >
-                                <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
-                                <span className="font-medium text-sm">Payment Settings</span>
-                            </Link>
-                        </>
+                    {/* Settings Section */}
+                    {(isSuperAdmin || hasPermission('admin-management') || hasPermission('payment-settings') || hasPermission('activity-logs')) && (
+                        <p className="px-4 text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 mt-6">Settings</p>
+                    )}
+
+                    {(isSuperAdmin || hasPermission('admin-management')) && (
+                        <Link
+                            href="/sharkfunded2logintoadminwithpermission/admin-management"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/admin-management') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        >
+                            <Users size={20} className={isActive('/sharkfunded2logintoadminwithpermission/admin-management') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                            <span className="font-medium text-sm">Admin Management</span>
+                        </Link>
+                    )}
+
+                    {(isSuperAdmin || hasPermission('payment-settings')) && (
+                        <Link
+                            href="/sharkfunded2logintoadminwithpermission/payment-settings"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        >
+                            <CreditCard size={20} className={isActive('/sharkfunded2logintoadminwithpermission/payment-settings') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                            <span className="font-medium text-sm">Payment Settings</span>
+                        </Link>
+                    )}
+
+                    {(isSuperAdmin || hasPermission('activity-logs')) && (
+                        <Link
+                            href="/sharkfunded2logintoadminwithpermission/activity-logs"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group ${isActive('/sharkfunded2logintoadminwithpermission/activity-logs') ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                        >
+                            <Activity size={20} className={isActive('/sharkfunded2logintoadminwithpermission/activity-logs') ? 'text-white' : 'text-slate-400 group-hover:text-white transition-colors'} />
+                            <span className="font-medium text-sm">Activity Logs</span>
+                        </Link>
                     )}
                 </nav>
 

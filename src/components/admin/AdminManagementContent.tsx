@@ -22,6 +22,8 @@ const SECTIONS = [
     { id: 'system-status', label: 'System Status' },
     { id: 'api-logs', label: 'API Payloads' },
     { id: 'otps', label: 'OTPs' },
+    { id: 'payment-settings', label: 'Payment Settings' },
+    { id: 'activity-logs', label: 'Activity Logs' },
 ];
 
 export default function AdminManagementContent() {

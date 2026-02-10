@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Search, Plus, Trash2, Power, AlertCircle, CheckCircle2, QrCode } from 'lucide-react';
 import ConfirmationModal from '@/components/ConfirmationModal';
+import SecurityVerificationModal from './ActionOtpModal';
 
 interface PaymentConfig {
     id: string;
@@ -13,11 +13,13 @@ interface PaymentConfig {
     created_at: string;
 }
 
+type PendingAction = 'ADD' | 'TOGGLE' | 'DELETE' | null;
+
 export default function UpiConfigContent() {
     const [configs, setConfigs] = useState<PaymentConfig[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -32,6 +34,11 @@ export default function UpiConfigContent() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [configToDelete, setConfigToDelete] = useState<PaymentConfig | null>(null);
 
+    // Security Modal State
+    const [showSecurityModal, setShowSecurityModal] = useState(false);
+    const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+    const [pendingData, setPendingData] = useState<any>(null);
+
     useEffect(() => {
         fetchConfigs();
     }, []);
@@ -39,13 +46,11 @@ export default function UpiConfigContent() {
     const fetchConfigs = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('payment_configs')
-                .select('*')
-                .order('created_at', { ascending: false });
+            const response = await fetch('/api/admin/payment-configs');
+            const data = await response.json();
 
-            if (error) throw error;
-            setConfigs(data || []);
+            if (!data.success) throw new Error(data.message);
+            setConfigs(data.data || []);
         } catch (err: any) {
             console.error('Error fetching configs:', err);
         } finally {
@@ -60,83 +65,78 @@ export default function UpiConfigContent() {
             is_active: true
         });
         setFormError(null);
-        setIsModalOpen(true);
+        setIsCreateModalOpen(true);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    // Step 1: Open Security Modal (No email OTP needed)
+    const initiateAction = (action: PendingAction, data: any) => {
+        setPendingAction(action);
+        setPendingData(data);
+        setIsCreateModalOpen(false);
+        setShowDeleteConfirm(false);
+        setShowSecurityModal(true);
+    };
+
+    // Step 2: Verify 2FA Code and Execute Action
+    const handleVerifySecurity = async (code: string) => {
+        if (!pendingAction) return;
+
+        let response;
+        try {
+            if (pendingAction === 'ADD') {
+                response = await fetch('/api/admin/payment-configs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        vpa: pendingData.vpa.trim(),
+                        merchant_name: pendingData.merchant_name.trim(),
+                        is_active: pendingData.is_active,
+                        two_factor_code: code
+                    })
+                });
+            } else if (pendingAction === 'TOGGLE') {
+                response = await fetch('/api/admin/payment-configs', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id: pendingData.id,
+                        is_active: !pendingData.is_active,
+                        two_factor_code: code
+                    })
+                });
+            } else if (pendingAction === 'DELETE') {
+                response = await fetch(`/api/admin/payment-configs?id=${pendingData.id}&two_factor_code=${code}`, {
+                    method: 'DELETE'
+                });
+            }
+
+            if (!response) throw new Error('No response');
+
+            const data = await response.json();
+            if (!data.success) throw new Error(data.message);
+
+            // Success!
+            fetchConfigs();
+            setShowSecurityModal(false);
+            setPendingAction(null);
+            setPendingData(null);
+        } catch (err: any) {
+            throw new Error(err.message || 'Action failed');
+        }
+    };
+
+    const handleFormSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setFormLoading(true);
-        setFormError(null);
-
-        try {
-            // Validation
-            if (!formData.vpa.includes('@')) {
-                throw new Error('Invalid VPA format (should contain @)');
-            }
-
-            const { error } = await supabase
-                .from('payment_configs')
-                .insert([{
-                    vpa: formData.vpa.trim(),
-                    merchant_name: formData.merchant_name.trim(),
-                    is_active: formData.is_active
-                }]);
-
-            if (error) {
-                if (error.code === '23505') throw new Error('This VPA already exists.');
-                throw error;
-            }
-
-            setIsModalOpen(false);
-            fetchConfigs();
-        } catch (err: any) {
-            console.error('Form error:', err);
-            setFormError(err.message || 'An error occurred');
-        } finally {
-            setFormLoading(false);
-        }
+        initiateAction('ADD', formData);
     };
 
-    const handleDelete = async () => {
+    const handleDeleteClick = () => {
         if (!configToDelete) return;
-
-        try {
-            const { error } = await supabase
-                .from('payment_configs')
-                .delete()
-                .eq('id', configToDelete.id);
-
-            if (error) throw error;
-            fetchConfigs();
-            setShowDeleteConfirm(false);
-            setConfigToDelete(null);
-        } catch (err: any) {
-            console.error('Delete error:', err);
-        }
+        initiateAction('DELETE', configToDelete);
     };
 
-    const handleToggleActive = async (config: PaymentConfig) => {
-        try {
-            // Optimistic update
-            setConfigs(prev => prev.map(c =>
-                c.id === config.id ? { ...c, is_active: !config.is_active } : c
-            ));
-
-            const { error } = await supabase
-                .from('payment_configs')
-                .update({ is_active: !config.is_active })
-                .eq('id', config.id);
-
-            if (error) {
-                // Revert on error
-                setConfigs(prev => prev.map(c =>
-                    c.id === config.id ? { ...c, is_active: config.is_active } : c
-                ));
-                throw error;
-            }
-        } catch (err) {
-            console.error('Error toggling status:', err);
-        }
+    const handleToggleClick = (config: PaymentConfig) => {
+        initiateAction('TOGGLE', config);
     };
 
     const filteredConfigs = configs.filter(c =>
@@ -208,7 +208,7 @@ export default function UpiConfigContent() {
                                     <tr key={config.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <button
-                                                onClick={() => handleToggleActive(config)}
+                                                onClick={() => handleToggleClick(config)}
                                                 className={`
                                                     flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all
                                                     ${config.is_active
@@ -254,11 +254,11 @@ export default function UpiConfigContent() {
             </div>
 
             {/* Create Modal */}
-            {isModalOpen && (
+            {isCreateModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     <div
                         className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
-                        onClick={() => setIsModalOpen(false)}
+                        onClick={() => setIsCreateModalOpen(false)}
                     />
                     <div className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl relative z-10 animate-in fade-in zoom-in duration-200">
                         <div className="p-8 border-b border-slate-100 bg-slate-50/50">
@@ -266,7 +266,7 @@ export default function UpiConfigContent() {
                             <p className="text-slate-500 text-sm mt-1">Configure a new receiver info</p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-8">
+                        <form onSubmit={handleFormSubmit} className="p-8">
                             {formError && (
                                 <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm">
                                     <AlertCircle size={18} />
@@ -309,7 +309,7 @@ export default function UpiConfigContent() {
                             <div className="mt-8 flex gap-4">
                                 <button
                                     type="button"
-                                    onClick={() => setIsModalOpen(false)}
+                                    onClick={() => setIsCreateModalOpen(false)}
                                     className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-2xl transition-all"
                                 >
                                     Cancel
@@ -319,7 +319,7 @@ export default function UpiConfigContent() {
                                     disabled={formLoading}
                                     className="flex-[2] px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-600/20 transition-all disabled:opacity-50"
                                 >
-                                    {formLoading ? 'Adding...' : 'Add Configuration'}
+                                    {formLoading ? 'Submitting...' : 'Proceed'}
                                 </button>
                             </div>
                         </form>
@@ -330,11 +330,18 @@ export default function UpiConfigContent() {
             <ConfirmationModal
                 isOpen={showDeleteConfirm}
                 onClose={() => setShowDeleteConfirm(false)}
-                onConfirm={handleDelete}
+                onConfirm={handleDeleteClick}
                 title="Delete Configuration"
-                message={`Are you sure you want to delete ${configToDelete?.vpa}?`}
-                confirmText="Delete Config"
+                message={`Are you sure you want to delete ${configToDelete?.vpa}? This action requires 2FA verification.`}
+                confirmText="Proceed to Verification"
                 type="danger"
+            />
+
+            <SecurityVerificationModal
+                isOpen={showSecurityModal}
+                onClose={() => setShowSecurityModal(false)}
+                onVerify={handleVerifySecurity}
+                actionName={pendingAction === 'ADD' ? 'Add Payment Config' : pendingAction === 'DELETE' ? 'Delete Payment Config' : 'Update Payment Status'}
             />
         </div>
     );
