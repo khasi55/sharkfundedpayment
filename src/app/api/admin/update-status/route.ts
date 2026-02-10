@@ -2,19 +2,27 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
 import { sendMerchantWebhook } from '@/utils/webhooks';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
     try {
+        const adminUser = await getAdminUser();
+        if (!adminUser) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
-        const { transactionId, status, approvedBy } = body;
+        const { transactionId, status } = body; // approvedBy is now derived from session
 
         if (!transactionId || !status) {
             return NextResponse.json({ success: false, message: 'Transaction ID and Status are required' }, { status: 400 });
         }
 
         // 1. Update Transaction Status & Approver
-        const updateData: any = { status: status };
-        if (approvedBy) updateData.approved_by = approvedBy;
+        const updateData: any = {
+            status: status,
+            approved_by: adminUser.email // SECURE: Use session user, not request body
+        };
 
         const { data: transaction, error } = await supabase
             .from('transactions')

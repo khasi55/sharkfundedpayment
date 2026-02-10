@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import nodemailer from 'nodemailer';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,19 +17,6 @@ const transporter = nodemailer.createTransport({
         pass: process.env.SMTP_PASS,
     },
 });
-
-async function getAdminUser() {
-    const cookieStore = await cookies();
-    const adminSession = cookieStore.get('admin_session');
-
-    if (!adminSession) return null;
-
-    try {
-        return JSON.parse(decodeURIComponent(adminSession.value));
-    } catch (e) {
-        return null;
-    }
-}
 
 export async function POST(req: Request) {
     try {

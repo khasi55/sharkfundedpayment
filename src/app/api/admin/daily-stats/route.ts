@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
     try {
-        // Get start/end date from body if needed, or default to current month/last 30 days
-        // For a full calendar, we usually need the data for the currently displayed month.
-        // Let's simplified and fetch last 60 days to cover relevant history or accept a range.
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
 
         const { startDate, endDate } = await request.json().catch(() => ({}));
 
@@ -16,7 +18,6 @@ export async function POST(request: Request) {
         if (startDate) {
             query = query.gte('created_at', startDate);
         } else {
-            // Default to last 90 days if not specified
             const d = new Date();
             d.setDate(d.getDate() - 90);
             query = query.gte('created_at', d.toISOString());
@@ -47,7 +48,6 @@ export async function POST(request: Request) {
             }
         });
 
-        // Convert to array
         const result = Object.entries(dailyStats).map(([date, stats]) => ({
             date,
             ...stats

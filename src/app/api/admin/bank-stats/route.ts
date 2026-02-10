@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
     try {
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         // Only fetch verified/confirmed transactions
         const { data: transactions, error } = await supabase
             .from('transactions')

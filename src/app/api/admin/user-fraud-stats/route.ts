@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getAdminUser } from '@/lib/adminAuth';
 
 interface UserFraudStats {
     email: string;
@@ -14,6 +15,11 @@ interface UserFraudStats {
 
 export async function POST(request: Request) {
     try {
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         // Fetch all transactions to analyze both verified and rejected by user
         const { data: transactions, error } = await supabase
             .from('transactions')

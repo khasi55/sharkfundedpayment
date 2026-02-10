@@ -44,7 +44,7 @@ BEGIN
     );
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger: After Insert on transactions
 DROP TRIGGER IF EXISTS on_new_transaction ON transactions;
@@ -73,7 +73,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Trigger: After Update on transactions
 DROP TRIGGER IF EXISTS on_transaction_status_change ON transactions;

@@ -31,7 +31,7 @@ BEGIN
     
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- 2. Create the Trigger
 DROP TRIGGER IF EXISTS log_payment_config_audit ON payment_configs;

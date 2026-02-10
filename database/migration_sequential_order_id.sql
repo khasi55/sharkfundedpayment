@@ -21,7 +21,7 @@ BEGIN
     NEW.order_id := 'SF-2025-' || nextval('order_id_seq');
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public;
 
 -- Trigger to run before INSERT
 DROP TRIGGER IF EXISTS set_order_id_trigger ON transactions;

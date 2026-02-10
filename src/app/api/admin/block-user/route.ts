@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export async function GET(request: Request) {
     try {
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const { data, error } = await supabase
             .from('blocked_users')
             .select('*')
@@ -19,6 +25,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         const { email, reason } = body;
 
@@ -41,6 +52,11 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     try {
+        const user = await getAdminUser();
+        if (!user) {
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const email = searchParams.get('email');
 

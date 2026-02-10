@@ -5,6 +5,8 @@ import { sendMerchantWebhook } from '@/utils/webhooks';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rateLimit';
 
+import { UPI_CONFIGS } from '@/config/upiConfig';
+
 const VerifyPaymentSchema = z.object({
     utr: z.string().min(1, 'UTR is required'),
     amount: z.union([z.string(), z.number()]),
@@ -201,7 +203,17 @@ export async function POST(request: Request) {
             });
         }
 
-        // If no webhook log found yet, update the transaction with the UTR so admin can see "Checking UTR: ..."
+        // [ANTI-HACK] Validate the merchantUpiId against our hardcoded list
+        // If the client sends something else (malicious), we override it with our known good one if possible,
+        // or just reject the VPA update.
+        let safeMerchantUpiId = merchantUpiId;
+        const isUpiValid = UPI_CONFIGS.some(c => c.vpa === merchantUpiId);
+
+        if (!isUpiValid && merchantUpiId) {
+            console.log(`[Security Alert] Malicious UPI ID attempt: ${merchantUpiId}. Overriding with default.`);
+            safeMerchantUpiId = UPI_CONFIGS[0].vpa;
+        }
+
         if (orderId) {
             // Fetch current details to clear any previous failure reason
             const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
@@ -218,14 +230,14 @@ export async function POST(request: Request) {
                         utr: utr,
                         status: 'pending_payment',
                         customer_details: newDetails,
-                        merchant_upi_id: merchantUpiId
+                        merchant_upi_id: safeMerchantUpiId
                     })
                     .eq('id', orderId);
             } else {
                 // Fallback update if read fails (shouldn't happen)
                 await supabase
                     .from('transactions')
-                    .update({ utr: utr, status: 'pending_payment', merchant_upi_id: merchantUpiId })
+                    .update({ utr: utr, status: 'pending_payment', merchant_upi_id: safeMerchantUpiId })
                     .eq('id', orderId);
             }
         }

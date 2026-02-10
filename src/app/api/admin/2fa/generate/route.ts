@@ -7,6 +7,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 // Disable caching for this route
 export const dynamic = 'force-dynamic';
 
+// NOTE: This route is accessible without admin_session during the login flow.
+// Future hardening: Require a short-lived password-verification token.
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();

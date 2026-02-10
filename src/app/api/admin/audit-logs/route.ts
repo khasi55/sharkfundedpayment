@@ -1,21 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
-
-async function getAdminUser() {
-    const cookieStore = await cookies();
-    const adminSession = cookieStore.get('admin_session');
-
-    if (!adminSession) return null;
-
-    try {
-        return JSON.parse(decodeURIComponent(adminSession.value));
-    } catch (e) {
-        return null;
-    }
-}
 
 export async function GET(req: Request) {
     try {

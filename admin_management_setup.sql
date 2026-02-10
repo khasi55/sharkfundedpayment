@@ -79,4 +79,4 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'message', 'Invalid credentials');
     END IF;
 END;
-$$;
+$$ SET search_path = public;
