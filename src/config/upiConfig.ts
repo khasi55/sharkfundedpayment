@@ -4,7 +4,7 @@ export interface UpiConfig {
 }
 
 export const UPI_CONFIGS: UpiConfig[] = [
-    { vpa: 'jaspprosolutions@idbi', merchantName: 'Jaspro Solutions' },
+    { vpa: 'adrshine05553@iob', merchantName: 'adrshine' },
 ];
 
 /**
