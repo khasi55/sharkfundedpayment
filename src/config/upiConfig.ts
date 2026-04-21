@@ -4,7 +4,7 @@ export interface UpiConfig {
 }
 
 export const UPI_CONFIGS: UpiConfig[] = [
-    { vpa: 'ADRSHINE.10019962@csbpay', merchantName: 'ADRSHINE' },
+    { vpa: 'groundzero24@ibl', merchantName: 'Sharkfunded' },
 ];
 
 /**
