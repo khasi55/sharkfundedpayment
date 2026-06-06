@@ -180,7 +180,10 @@ export default function PaymentStatus(props: PaymentStatusProps) {
                 </div>
 
                 <div className="w-full space-y-3">
-                    {setState && !state?.error?.includes('rejected') && (
+                    {setState && 
+                     !state?.error?.includes('rejected') && 
+                     !state?.error?.includes('Invalid') && 
+                     !state?.error?.includes('expired') && (
                         <button
                             onClick={() => setState(prev => ({ ...prev, step: 'payment', error: '' }))}
                             className="w-full bg-[#635BFF] text-white py-3.5 rounded-xl font-bold text-sm hover:bg-[#5851E3] transition-all hover:shadow-lg hover:shadow-indigo-500/20 flex items-center justify-center gap-2"

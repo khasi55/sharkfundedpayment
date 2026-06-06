@@ -17,31 +17,153 @@ const VerifyPaymentSchema = z.object({
 });
 
 export async function POST(request: Request) {
+    let body: any = null;
+    let ip = '127.0.0.1';
+
+    const logResponse = async (statusCode: number, responseBody: any, metadata: any = {}) => {
+        try {
+            await supabase.from('api_logs').insert({
+                endpoint: 'verify-payment',
+                ip_address: ip,
+                request_payload: body,
+                response_payload: responseBody,
+                status_code: statusCode,
+                metadata: {
+                    ...metadata,
+                    utr: body?.utr || metadata?.utr,
+                    order_id: body?.orderId || metadata?.order_id
+                }
+            });
+        } catch (err) {
+            console.error('[Logging Error] Failed to write API log:', err);
+        }
+    };
+
     try {
         console.log("--- VERIFY PAYMENT API V2 HIT ---");
 
-        const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+        ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
         const rateLimit = await checkRateLimit(ip, 'verify-payment', 60, 60);
 
         if (!rateLimit.success) {
-            return NextResponse.json(
-                { success: false, message: 'Too many requests. Please try again later.' },
-                { status: 429 }
-            );
+            const resBody = { success: false, message: 'Too many requests. Please try again later.' };
+            await logResponse(429, resBody, { rate_limit: true });
+            return NextResponse.json(resBody, { status: 429 });
         }
 
-        const body = await request.json();
+        try {
+            body = await request.json();
+        } catch (e) {
+            const resBody = { success: false, message: 'Invalid JSON payload' };
+            await logResponse(400, resBody, { error: 'Invalid JSON' });
+            return NextResponse.json(resBody, { status: 400 });
+        }
+
         const validation = VerifyPaymentSchema.safeParse(body);
 
         if (!validation.success) {
-            return NextResponse.json(
-                { success: false, message: 'Validation Error', errors: validation.error.format() },
-                { status: 400 }
-            );
+            const resBody = { success: false, message: 'Validation Error', errors: validation.error.format() };
+            await logResponse(400, resBody);
+            return NextResponse.json(resBody, { status: 400 });
         }
 
         const { utr, amount, orderId, email, name, merchantUpiId } = validation.data;
         const amountStr = String(amount);
+
+        // [SECURITY] Check if this UTR has already been successfully verified for another transaction
+        const { data: duplicateVerification } = await supabase
+            .from('transactions')
+            .select('id, order_id')
+            .eq('utr', utr)
+            .eq('status', 'verified')
+            .neq('id', orderId || '')
+            .limit(1)
+            .maybeSingle();
+
+        if (duplicateVerification) {
+            console.warn(`[Security Alert] Reused UTR Attempt. UTR: ${utr}, Current Order: ${orderId}, Existing Order: ${duplicateVerification.id || duplicateVerification.order_id}`);
+            const resBody = {
+                success: false,
+                message: 'This UTR has already been verified for another transaction. Duplicate use is blocked.'
+            };
+            await logResponse(400, resBody, { duplicate_check: duplicateVerification });
+            return NextResponse.json(resBody, { status: 400 });
+        }
+
+        // [SECURITY] Terminal State Guard - Prevent customers from overriding admin decisions or duplicate updates
+        if (orderId) {
+            const { data: existingTx } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('id', orderId)
+                .maybeSingle();
+
+            if (existingTx) {
+                if (existingTx.status === 'verified') {
+                    console.log(`[VerifyPayment] Transaction ${orderId} is already verified. Returning success directly.`);
+                    const resBody = {
+                        success: true,
+                        message: 'Payment already verified',
+                        data: existingTx
+                    };
+                    await logResponse(200, resBody, { check_type: 'order_id_verified' });
+                    return NextResponse.json(resBody);
+                }
+                if (existingTx.status === 'rejected') {
+                    console.log(`[VerifyPayment] Transaction ${orderId} has been rejected by administration. Blocking verify.`);
+                    const resBody = {
+                        success: false,
+                        message: 'This payment verification request has been rejected by administration. Please contact support.'
+                    };
+                    await logResponse(400, resBody, { check_type: 'order_id_rejected' });
+                    return NextResponse.json(resBody, { status: 400 });
+                }
+                if (existingTx.status === 'expired' || existingTx.status === 'cancelled') {
+                    console.log(`[VerifyPayment] Transaction ${orderId} is ${existingTx.status}. Blocking verify.`);
+                    const resBody = {
+                        success: false,
+                        message: `This checkout session has ${existingTx.status === 'expired' ? 'expired' : 'been cancelled'}.`
+                    };
+                    await logResponse(400, resBody, { check_type: `order_id_${existingTx.status}` });
+                    return NextResponse.json(resBody, { status: 400 });
+                }
+            }
+        } else {
+            // Check by UTR if orderId is missing
+            const { data: existingTx } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('utr', utr)
+                .maybeSingle();
+
+            if (existingTx) {
+                if (existingTx.status === 'verified') {
+                    const resBody = {
+                        success: true,
+                        message: 'Payment already verified',
+                        data: existingTx
+                    };
+                    await logResponse(200, resBody, { check_type: 'utr_verified' });
+                    return NextResponse.json(resBody);
+                }
+                if (existingTx.status === 'rejected') {
+                    const resBody = {
+                        success: false,
+                        message: 'This payment verification request has been rejected by administration. Please contact support.'
+                    };
+                    await logResponse(400, resBody, { check_type: 'utr_rejected' });
+                    return NextResponse.json(resBody, { status: 400 });
+                }
+                if (existingTx.status === 'expired' || existingTx.status === 'cancelled') {
+                    const resBody = {
+                        success: false,
+                        message: `This checkout session has ${existingTx.status === 'expired' ? 'expired' : 'been cancelled'}.`
+                    };
+                    await logResponse(400, resBody, { check_type: `utr_${existingTx.status}` });
+                    return NextResponse.json(resBody, { status: 400 });
+                }
+            }
+        }
 
         const handleEmailSending = async (transaction: any) => {
             const recipientEmail = email || transaction?.customer_details?.email;
@@ -98,10 +220,9 @@ export async function POST(request: Request) {
             const requestedAmount = Number(amountStr);
 
             if (!Number.isFinite(paidAmount) || !Number.isFinite(requestedAmount)) {
-                return NextResponse.json(
-                    { success: false, message: 'Invalid amount data.' },
-                    { status: 400 }
-                );
+                const resBody = { success: false, message: 'Invalid amount data.' };
+                await logResponse(400, resBody);
+                return NextResponse.json(resBody, { status: 400 });
             }
 
             // Allow overpayment and up to ₹5 underpayment
@@ -127,24 +248,62 @@ export async function POST(request: Request) {
                     transaction = data;
                 }
 
-                // Update transaction with merchant_upi_id if available
-                if (transaction && merchantUpiId) {
-                    await supabase
+                // Update transaction status to verified, utr, and merchant_upi_id on the server
+                if (transaction) {
+                    const { data: updatedTx, error: updateErr } = await supabase
                         .from('transactions')
-                        .update({ merchant_upi_id: merchantUpiId })
-                        .eq('id', transaction.id);
+                        .update({
+                            status: 'verified',
+                            utr: utr,
+                            merchant_upi_id: merchantUpiId || transaction.merchant_upi_id
+                        })
+                        .eq('id', transaction.id)
+                        .select()
+                        .single();
 
-                    transaction.merchant_upi_id = merchantUpiId;
+                    if (!updateErr && updatedTx) {
+                        transaction = updatedTx;
+                    }
+                } else {
+                    // Create transaction on server if it doesn't exist
+                    const { data: insertedTx, error: insertErr } = await supabase
+                        .from('transactions')
+                        .insert({
+                            amount: requestedAmount,
+                            utr: utr,
+                            session_id: orderId || null,
+                            status: 'verified',
+                            customer_details: { name: name || 'Customer', email: email || '' },
+                            merchant_upi_id: merchantUpiId
+                        })
+                        .select()
+                        .single();
+
+                    if (!insertErr && insertedTx) {
+                        transaction = insertedTx;
+                    } else if (insertErr && insertErr.code === '23505') {
+                        // Handle race condition/duplicate key: fetch existing row
+                        const { data: existingData } = await supabase
+                            .from('transactions')
+                            .select()
+                            .eq('utr', utr)
+                            .maybeSingle();
+                        if (existingData) {
+                            transaction = existingData;
+                        }
+                    }
                 }
 
                 await handleEmailSending(transaction);
                 await handleWebhookTrigger(transaction, 'verified');
 
-                return NextResponse.json({
+                const resBody = {
                     success: true,
                     message: 'Payment verified',
                     data: transaction
-                });
+                };
+                await logResponse(200, resBody, { verified_success: true });
+                return NextResponse.json(resBody);
             } else {
                 if (orderId) {
                     const failureReason = `Amount mismatch. Received: ${paidAmount}, Expected: ${requestedAmount}`;
@@ -175,33 +334,15 @@ export async function POST(request: Request) {
                     }
                 }
 
-                return NextResponse.json({
+                const resBody = {
                     success: false,
                     message: `Amount mismatch. Received Rs. ${paidAmount}, expected Rs. ${requestedAmount}`
-                });
+                };
+                await logResponse(400, resBody, { mismatch_details: { paidAmount, requestedAmount } });
+                return NextResponse.json(resBody, { status: 400 });
             }
         }
 
-        if (utr.startsWith('TEST')) {
-            const mockTransaction = {
-                id: 'mock-id',
-                utr,
-                amount: amountStr,
-                status: 'verified',
-                order_id: orderId,
-                customer_details: { email, name },
-                merchant_upi_id: merchantUpiId
-            };
-
-            await handleEmailSending(mockTransaction);
-            await handleWebhookTrigger(mockTransaction, 'verified');
-
-            return NextResponse.json({
-                success: true,
-                message: 'Payment verified (MOCKED)',
-                data: { utr, amount, status: 'verified', merchant_upi_id: merchantUpiId }
-            });
-        }
 
         // [ANTI-HACK] Validate the merchantUpiId against our hardcoded list
         // If the client sends something else (malicious), we override it with our known good one if possible,
@@ -243,9 +384,13 @@ export async function POST(request: Request) {
         }
 
         // Return false to keep polling
-        return NextResponse.json({ success: false, message: 'Payment not found yet. Keep polling.' });
-    } catch (error) {
+        const resBody = { success: false, message: 'Payment not found yet. Keep polling.' };
+        await logResponse(200, resBody, { polling: true });
+        return NextResponse.json(resBody);
+    } catch (error: any) {
         console.error('API Error:', error);
-        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+        const resBody = { success: false, message: 'Internal Server Error' };
+        await logResponse(500, resBody, { error: error?.message || String(error) });
+        return NextResponse.json(resBody, { status: 500 });
     }
 }

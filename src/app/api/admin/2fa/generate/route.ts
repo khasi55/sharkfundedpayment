@@ -23,7 +23,7 @@ export async function POST(req: Request) {
         const { data: adminUser, error: fetchError } = await supabaseAdmin
             .from('admin')
             .select('email, id')
-            .eq('email', email)
+            .ilike('email', email)
             .single();
 
         if (fetchError || !adminUser) {

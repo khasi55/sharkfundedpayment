@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 
 interface WebhookPayload {
     event: 'payment.success' | 'payment.failed';
@@ -8,17 +9,38 @@ interface WebhookPayload {
     amount: string | number;
     status: string;
     timestamp: string;
+    signature?: string;
+    [key: string]: any;
 }
 
 export const sendMerchantWebhook = async (url: string, payload: WebhookPayload) => {
     if (!url) return;
 
     try {
-        console.log(`Sending callback (POST) to ${url}`, payload);
+        const secret = process.env.SHARK_PAYMENT_KEY_SECRET || '';
+        
+        // Generate cryptographic signature
+        const payloadString = JSON.stringify(payload);
+        const signature = crypto
+            .createHmac('sha256', secret)
+            .update(payloadString)
+            .digest('hex');
+
+        // Add signature to both payload and headers
+        const signedPayload = {
+            ...payload,
+            signature
+        };
+
+        console.log(`Sending callback (POST) to ${url}`, signedPayload);
         // 1. Try POST
-        await axios.post(url, payload, {
+        await axios.post(url, signedPayload, {
             timeout: 10000,
-            headers: { 'Content-Type': 'application/json', 'User-Agent': 'SharkFunded-Callback/1.0' }
+            headers: { 
+                'Content-Type': 'application/json', 
+                'User-Agent': 'SharkFunded-Callback/1.0',
+                'x-shark-signature': signature
+            }
         });
         console.log(`✅ Callback (POST) sent successfully to ${url}`);
         return true;
@@ -28,13 +50,27 @@ export const sendMerchantWebhook = async (url: string, payload: WebhookPayload) 
         console.error(`❌ Callback (POST) failed: ${errorMsg}. Retrying with GET...`);
 
         try {
-            const params = new URLSearchParams(payload as any).toString();
+            const secret = process.env.SHARK_PAYMENT_KEY_SECRET || '';
+            const signature = crypto
+                .createHmac('sha256', secret)
+                .update(JSON.stringify(payload))
+                .digest('hex');
+
+            const signedPayload = {
+                ...payload,
+                signature
+            };
+
+            const params = new URLSearchParams(signedPayload as any).toString();
             const getUrl = `${url}?${params}`;
             console.log(`Sending callback (GET) to ${getUrl}`);
 
             await axios.get(getUrl, {
                 timeout: 10000,
-                headers: { 'User-Agent': 'SharkFunded-Callback/1.0' }
+                headers: { 
+                    'User-Agent': 'SharkFunded-Callback/1.0',
+                    'x-shark-signature': signature
+                }
             });
             console.log(`Callback (GET) sent successfully to ${url}`);
             return true;

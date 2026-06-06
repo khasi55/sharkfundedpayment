@@ -15,9 +15,14 @@ export const supabase = createClient(
 
 const serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
+// Fall back to anon key if serviceRoleKey is invalid (e.g. database password starting with sb_secret_)
+const activeServiceKey = (serviceRoleKey && serviceRoleKey.startsWith('eyJ'))
+    ? serviceRoleKey
+    : supabaseAnonKey;
+
 export const supabaseAdmin = createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
-    serviceRoleKey || 'placeholder-service-key',
+    activeServiceKey || 'placeholder-service-key',
     {
         auth: {
             persistSession: false,

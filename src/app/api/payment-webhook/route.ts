@@ -6,6 +6,15 @@ export async function POST(request: Request) {
         const headers = Object.fromEntries(request.headers);
         console.log('Received Webhook Headers:', headers);
 
+        // [SECURE] Verify Webhook Secret to prevent spoofing
+        const webhookSecret = headers['x-shark-webhook-secret'];
+        const expectedSecret = process.env.SHARK_PAYMENT_KEY_SECRET;
+
+        if (!webhookSecret || webhookSecret !== expectedSecret) {
+            console.warn(`[Security Alert] Unauthorized webhook attempt from IP: ${headers['x-forwarded-for'] || 'unknown'}`);
+            return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
         console.log('Received Webhook Body:', body);
 

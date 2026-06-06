@@ -19,7 +19,7 @@ async function verify2FA(email: string, token: string) {
     const { data: adminUser, error } = await supabaseAdmin
         .from('admin')
         .select('two_factor_secret')
-        .eq('email', email)
+        .ilike('email', email)
         .single();
 
     if (error || !adminUser) {

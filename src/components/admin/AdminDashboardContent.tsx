@@ -34,6 +34,23 @@ const AdminDashboardContent: React.FC = () => {
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
 
+    // Dashboard-specific States
+    const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
+    const [recentActivity, setRecentActivity] = useState<Transaction[]>([]);
+    const [dailyTrendStats, setDailyTrendStats] = useState<any[]>([]);
+    const [statsLoading, setStatsLoading] = useState(true);
+
+    // Transactions Pagination States
+    const [totalTransactions, setTotalTransactions] = useState(0);
+    const [txnPage, setTxnPage] = useState(1);
+
+    // Users States
+    const [users, setUsers] = useState<UserStat[]>([]);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [userPage, setUserPage] = useState(1);
+    const [userFilter, setUserFilter] = useState('all'); // 'all', 'verified'
+    const [usersLoading, setUsersLoading] = useState(false);
+
     // Confirmation Modal State
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
@@ -41,11 +58,117 @@ const AdminDashboardContent: React.FC = () => {
         id: string | null;
     }>({ isOpen: false, type: null, id: null });
 
-    useEffect(() => {
-        fetchTransactions();
-        fetchBlockedUsers(); // [NEW]
+    // Fetch dashboard data (aggregates and chart)
+    const fetchDashboardData = useCallback(async () => {
+        setStatsLoading(true);
+        try {
+            const [statsRes, dailyStatsRes] = await Promise.all([
+                axios.get('/api/admin/dashboard-stats'),
+                axios.post('/api/admin/daily-stats', {
+                    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+                })
+            ]);
+            if (statsRes.data.success) {
+                setDashboardStats(statsRes.data.stats);
+                setRecentActivity(statsRes.data.recentTransactions || []);
+            }
+            if (dailyStatsRes.data.success) {
+                setDailyTrendStats(dailyStatsRes.data.stats || []);
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard stats:', error);
+        } finally {
+            setStatsLoading(false);
+        }
+    }, []);
 
-        // [NEW] Trigger lazy cleanup of abandoned sessions
+    // Fetch transactions with server-side pagination
+    const fetchTransactions = useCallback(async () => {
+        setLoading(true);
+        try {
+            const { data: result } = await axios.get('/api/admin/transactions', {
+                params: {
+                    search,
+                    status: filter,
+                    dateFilter,
+                    customDate,
+                    page: txnPage,
+                    limit: 50
+                }
+            });
+            if (result.success) {
+                const data = result.data;
+                // [Auto-Expire Logic]
+                const now = Date.now();
+                const twentyMinsInMs = 20 * 60 * 1000;
+                const ordersToExpire = (data || []).filter((t: any) => {
+                    if (t.status === 'pending_payment') {
+                        const createdAt = new Date(t.created_at).getTime();
+                        return (now - createdAt) > twentyMinsInMs;
+                    }
+                    return false;
+                });
+
+                if (ordersToExpire.length > 0) {
+                    console.log(`Found ${ordersToExpire.length} expired orders. Updating...`);
+                    const idsToExpire = ordersToExpire.map((t: any) => t.id);
+
+                    // Update status via API (more secure than client logic)
+                    await axios.post('/api/admin/expire-sessions', { ids: idsToExpire });
+
+                    // Update Local Data
+                    const updatedData = (data || []).map((t: any) => {
+                        if (idsToExpire.includes(t.id)) {
+                            return { ...t, status: 'expired' };
+                        }
+                        return t;
+                    });
+                    setTransactions(updatedData as Transaction[]);
+                } else {
+                    setTransactions(data as Transaction[] || []);
+                }
+                setTotalTransactions(result.total || 0);
+            }
+        } catch (error) {
+            console.error('Error fetching transactions:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [search, filter, dateFilter, customDate, txnPage]);
+
+    // Fetch users with server-side pagination
+    const fetchUsers = useCallback(async () => {
+        setUsersLoading(true);
+        try {
+            const { data: result } = await axios.get('/api/admin/users', {
+                params: {
+                    search,
+                    filter: userFilter,
+                    page: userPage,
+                    limit: 50
+                }
+            });
+            if (result.success) {
+                setUsers(result.users || []);
+                setTotalUsers(result.total || 0);
+            }
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        } finally {
+            setUsersLoading(false);
+        }
+    }, [search, userFilter, userPage]);
+
+    // Ref to handle Postgres subscription callbacks without stale closures
+    const latestRef = React.useRef({ isDashboard, isTransactions, isUsers, fetchDashboardData, fetchTransactions, fetchUsers });
+    useEffect(() => {
+        latestRef.current = { isDashboard, isTransactions, isUsers, fetchDashboardData, fetchTransactions, fetchUsers };
+    });
+
+    useEffect(() => {
+        fetchBlockedUsers();
+
+        // Trigger lazy cleanup of abandoned sessions
         axios.post('/api/admin/expire-sessions').catch(err => console.warn('Background cleanup failed:', err));
 
         // Real-time subscription
@@ -56,13 +179,13 @@ const AdminDashboardContent: React.FC = () => {
                 { event: '*', schema: 'public', table: 'transactions' },
                 (payload: any) => {
                     console.log('Real-time change:', payload);
-
-                    if (payload.eventType === 'INSERT') {
-                        setTransactions(prev => [payload.new as Transaction, ...prev]);
-                    } else if (payload.eventType === 'UPDATE') {
-                        setTransactions(prev => prev.map(t => t.id === payload.new.id ? payload.new as Transaction : t));
-                    } else if (payload.eventType === 'DELETE') {
-                        setTransactions(prev => prev.filter(t => t.id !== payload.old.id));
+                    const current = latestRef.current;
+                    if (current.isDashboard) {
+                        current.fetchDashboardData();
+                    } else if (current.isTransactions) {
+                        current.fetchTransactions();
+                    } else if (current.isUsers) {
+                        current.fetchUsers();
                     }
                 }
             )
@@ -77,54 +200,39 @@ const AdminDashboardContent: React.FC = () => {
         };
     }, []);
 
-    const fetchTransactions = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('transactions')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            // [Auto-Expire Logic]
-            // Identify pending orders > 20 mins old
-            const now = Date.now();
-            const twentyMinsInMs = 20 * 60 * 1000;
-            const ordersToExpire = (data || []).filter((t: any) => {
-                if (t.status === 'pending_payment') {
-                    const createdAt = new Date(t.created_at).getTime();
-                    return (now - createdAt) > twentyMinsInMs;
-                }
-                return false;
-            });
-
-            if (ordersToExpire.length > 0) {
-                console.log(`Found ${ordersToExpire.length} expired orders. Updating...`);
-                const idsToExpire = ordersToExpire.map((t: any) => t.id);
-
-                // 1. Update DB
-                await supabase
-                    .from('transactions')
-                    .update({ status: 'expired' })
-                    .in('id', idsToExpire);
-
-                // 2. Update Local Data (Optimization: avoid re-fetch)
-                const updatedData = (data || []).map((t: any) => {
-                    if (idsToExpire.includes(t.id)) {
-                        return { ...t, status: 'expired' };
-                    }
-                    return t;
-                });
-                setTransactions(updatedData as Transaction[]);
-            } else {
-                setTransactions(data as Transaction[] || []);
-            }
-        } catch (error) {
-            console.error('Error fetching transactions:', error);
-        } finally {
-            setLoading(false);
+    // Load data based on active tab
+    useEffect(() => {
+        if (isDashboard) {
+            fetchDashboardData();
         }
-    };
+    }, [isDashboard, fetchDashboardData]);
+
+    useEffect(() => {
+        if (isTransactions) {
+            const timer = setTimeout(() => {
+                fetchTransactions();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [isTransactions, fetchTransactions]);
+
+    useEffect(() => {
+        if (isUsers) {
+            const timer = setTimeout(() => {
+                fetchUsers();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [isUsers, fetchUsers]);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setTxnPage(1);
+    }, [search, filter, dateFilter, customDate]);
+
+    useEffect(() => {
+        setUserPage(1);
+    }, [search, userFilter]);
 
     // [NEW] Fetch blocked users
     const fetchBlockedUsers = async () => {
@@ -217,165 +325,71 @@ const AdminDashboardContent: React.FC = () => {
             // Actually, the previous code had specific fallback logic in the catch block. 
             // To be safe and minimal, I will retain the structure but ensure approvedBy is used.
 
-        } catch (error) {
-            console.warn('API update failed, falling back to client-side update:', error);
-
-            // 2. Fallback: Client-side update
-            try {
-                // Get admin email again for fallback scope
-                let adminEmail = 'Unknown Admin';
-                if (typeof window !== 'undefined') {
-                    const storedUser = localStorage.getItem('admin_user');
-                    if (storedUser) {
-                        try {
-                            const userObj = JSON.parse(storedUser);
-                            adminEmail = userObj.email || userObj.user_email || 'Unknown Admin';
-                        } catch (e) { }
-                    }
-                }
-
-                const { error: dbError } = await supabase
-                    .from('transactions')
-                    .update({ status: type, approved_by: adminEmail })
-                    .eq('id', id);
-
-                if (dbError) throw dbError;
-
-                // Optimistic update
-                setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: type, approved_by: adminEmail } : t));
-
-                // 3. If verified, trigger email via receipt API
-                if (type === 'verified') {
-                    const txn = transactions.find(t => t.id === id);
-                    if (txn) {
-                        axios.post('/api/send-receipt', {
-                            utr: txn.utr,
-                            email: txn.customer_details?.email,
-                            name: txn.customer_details?.name
-                        }).catch(e => console.error('Failed to trigger receipt email:', e));
-                    }
-                }
-
-            } catch (fallbackError: any) {
-                console.error('Fallback update failed:', fallbackError);
-                alert('Failed to update status: ' + (fallbackError.message || 'Unknown error'));
-            }
+        } catch (error: any) {
+            console.error('API update failed:', error);
+            alert('Failed to update status: ' + (error.response?.data?.message || error.message || 'Unknown error'));
         }
     };
 
-    const filteredTransactions = transactions.filter(t => {
-        const matchesFilter = filter === 'all' || t.status === filter;
-        const matchesSearch =
-            t.utr?.toLowerCase().includes(search.toLowerCase()) ||
-            t.order_id?.toLowerCase().includes(search.toLowerCase()) ||
-            t.customer_details?.email?.toLowerCase().includes(search.toLowerCase());
+    const filteredTransactions = transactions;
+    const filteredUsers = users;
 
-        let matchesDate = true;
-        const date = new Date(t.created_at);
-        const now = new Date();
+    const handleExport = async () => {
+        try {
+            const { data: result } = await axios.get('/api/admin/transactions', {
+                params: {
+                    search,
+                    status: filter,
+                    dateFilter,
+                    customDate,
+                    limit: 'all'
+                }
+            });
 
-        if (dateFilter === 'today') {
-            matchesDate = date.toDateString() === now.toDateString();
-        } else if (dateFilter === 'week') {
-            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            matchesDate = date >= weekAgo;
-        } else if (dateFilter === 'month') {
-            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            matchesDate = date >= monthAgo;
-        } else if (dateFilter === 'custom' && customDate) {
-            matchesDate = date.toDateString() === new Date(customDate).toDateString();
+            if (!result.success) {
+                alert('Failed to fetch transactions for export');
+                return;
+            }
+
+            const exportData = result.data || [];
+
+            const escapeCsvField = (field: any) => {
+                if (field === null || field === undefined) return '';
+                const stringField = String(field);
+                // Wrap in quotes if it contains comma, quote, or newline
+                if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
+                    return `"${stringField.replace(/"/g, '""')}"`;
+                }
+                return stringField;
+            };
+
+            const csvContent = [
+                ['Date', 'Order ID', 'UTR', 'Customer Name', 'Email', 'Amount', 'Status'],
+                ...exportData.map((t: any) => [
+                    escapeCsvField(new Date(t.created_at).toLocaleString()),
+                    escapeCsvField(t.order_id),
+                    escapeCsvField(t.utr),
+                    escapeCsvField(t.customer_details?.name),
+                    escapeCsvField(t.customer_details?.email),
+                    escapeCsvField(t.amount),
+                    escapeCsvField(t.status)
+                ])
+            ].map(e => e.join(",")).join("\n");
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            link.setAttribute("download", `SharkFunded_Transactions_${timestamp}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Export failed due to a network error.');
         }
-
-        return matchesFilter && matchesSearch && matchesDate;
-    });
-
-    const [userFilter, setUserFilter] = useState('all'); // 'all', 'verified'
-
-    // Users Calculation
-    const users: UserStat[] = useMemo(() => {
-        const userMap = new Map<string, UserStat>();
-
-        transactions.forEach(t => {
-            const email = t.customer_details?.email;
-            if (!email) return;
-
-            if (!userMap.has(email)) {
-                userMap.set(email, {
-                    email,
-                    name: t.customer_details?.name || 'Unknown',
-                    totalSpend: 0,
-                    totalOrders: 0,
-                    verifiedOrders: 0,
-                    lastActive: t.created_at,
-                    status: 'active',
-                    isBlocked: blockedEmails.includes(email) // [NEW]
-                });
-            }
-
-            // Update blocked status dynamically if it changed
-            // Update blocked status dynamically if it changed
-            const user = userMap.get(email)!;
-            user.isBlocked = blockedEmails.includes(email);
-
-            if (t.status === 'verified') {
-                user.totalSpend += Number(t.amount);
-                user.verifiedOrders += 1;
-            }
-            user.totalOrders += 1;
-            if (new Date(t.created_at) > new Date(user.lastActive)) {
-                user.lastActive = t.created_at;
-            }
-        });
-
-        return Array.from(userMap.values()).sort((a, b) => b.totalSpend - a.totalSpend);
-    }, [transactions, blockedEmails]); // [NEW] Depend on blockedEmails
-
-    const filteredUsers = users.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
-            u.email.toLowerCase().includes(search.toLowerCase());
-
-        let matchesFilter = true;
-        if (userFilter === 'verified') {
-            matchesFilter = u.verifiedOrders > 0;
-        }
-
-        return matchesSearch && matchesFilter;
-    });
-
-    const handleExport = () => {
-        const escapeCsvField = (field: any) => {
-            if (field === null || field === undefined) return '';
-            const stringField = String(field);
-            // Wrap in quotes if it contains comma, quote, or newline
-            if (stringField.includes(',') || stringField.includes('"') || stringField.includes('\n')) {
-                return `"${stringField.replace(/"/g, '""')}"`;
-            }
-            return stringField;
-        };
-
-        const csvContent = [
-            ['Date', 'Order ID', 'UTR', 'Customer Name', 'Email', 'Amount', 'Status'],
-            ...filteredTransactions.map(t => [
-                escapeCsvField(new Date(t.created_at).toLocaleString()),
-                escapeCsvField(t.order_id),
-                escapeCsvField(t.utr),
-                escapeCsvField(t.customer_details?.name),
-                escapeCsvField(t.customer_details?.email),
-                escapeCsvField(t.amount),
-                escapeCsvField(t.status)
-            ])
-        ].map(e => e.join(",")).join("\n");
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        link.setAttribute("download", `SharkFunded_Transactions_${timestamp}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
 
     const getStatusStyle = (status: string) => {
@@ -406,38 +420,24 @@ const AdminDashboardContent: React.FC = () => {
         }).format(new Date(dateString));
     }, []);
 
-    // Stats Calculations - Memoized
+    // Stats Calculations - Memoized from server stats
     const stats: DashboardStats = useMemo(() => {
-        const totalRevenue = transactions.filter(t => t.status === 'verified').reduce((sum, t) => sum + Number(t.amount), 0);
-        const totalPayments = transactions.length;
-        const approvedCount = transactions.filter(t => t.status === 'verified').length;
-        const pendingCount = transactions.filter(t => t.status === 'pending_manual_verification').length;
-        const failedCount = transactions.filter(t => t.status === 'failed').length;
-        const rejectedCount = transactions.filter(t => t.status === 'rejected').length;
-        const expiredCount = transactions.filter(t => t.status === 'expired').length;
-        const totalUsers = new Set(transactions.map(t => t.customer_details?.email)).size;
-
-        const todayTransactions = transactions.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString());
-        const todayCount = todayTransactions.length;
-        const todayVolume = todayTransactions.filter(t => t.status === 'verified').reduce((sum, t) => sum + Number(t.amount), 0);
-        const todayApprovedCount = todayTransactions.filter(t => t.status === 'verified').length;
-        const todayRejectedCount = todayTransactions.filter(t => t.status === 'failed' || t.status === 'rejected').length;
-
-        return {
-            totalRevenue,
-            totalPayments,
-            approvedCount,
-            pendingCount,
-            failedCount,
-            rejectedCount,
-            expiredCount,
-            totalUsers,
-            todayCount,
-            todayApprovedCount,
-            todayRejectedCount,
-            todayVolume
+        const defaultStats: DashboardStats = {
+            totalRevenue: 0,
+            totalPayments: 0,
+            approvedCount: 0,
+            pendingCount: 0,
+            failedCount: 0,
+            rejectedCount: 0,
+            expiredCount: 0,
+            totalUsers: 0,
+            todayCount: 0,
+            todayApprovedCount: 0,
+            todayRejectedCount: 0,
+            todayVolume: 0
         };
-    }, [transactions]);
+        return dashboardStats || defaultStats;
+    }, [dashboardStats]);
 
     return (
         <>
@@ -451,7 +451,7 @@ const AdminDashboardContent: React.FC = () => {
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                             {/* Revenue Chart (8 cols) */}
                             <div className="lg:col-span-8 min-h-[350px]">
-                                <RevenueChart transactions={transactions} />
+                                <RevenueChart dailyStats={dailyTrendStats} />
                             </div>
 
                             {/* Right Column (4 cols) - Stacked vertically */}
@@ -460,7 +460,7 @@ const AdminDashboardContent: React.FC = () => {
                                     <SuccessRate stats={stats} />
                                 </div>
                                 <div className="flex-[2] min-h-[300px]">
-                                    <RecentActivity transactions={transactions} />
+                                    <RecentActivity transactions={recentActivity} />
                                 </div>
                             </div>
                         </div>
@@ -483,6 +483,10 @@ const AdminDashboardContent: React.FC = () => {
                         formatTime={formatTime}
                         onBlock={handleBlockUser} // [NEW]
                         onUnblock={handleUnblockUser} // [NEW]
+                        currentPage={userPage}
+                        setCurrentPage={setUserPage}
+                        totalUsersCount={totalUsers}
+                        loading={usersLoading}
                     />
                 )}
 
@@ -506,6 +510,9 @@ const AdminDashboardContent: React.FC = () => {
                         setSelectedTransaction={setSelectedTransaction}
                         initiateStatusUpdate={initiateStatusUpdate}
                         onCreateLink={() => setShowCreateLinkModal(true)}
+                        currentPage={txnPage}
+                        setCurrentPage={setTxnPage}
+                        totalTransactionsCount={totalTransactions}
                     />
                 )}
 

@@ -24,14 +24,14 @@ const ApiLogsTable = () => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('api_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(500); // Limit to last 50 for performance
+            const response = await fetch('/api/admin/api-logs');
+            const result = await response.json();
 
-            if (error) throw error;
-            setLogs(data || []);
+            if (result.success) {
+                setLogs(result.data || []);
+            } else {
+                console.error('Failed to fetch logs:', result.message);
+            }
         } catch (error) {
             console.error('Error fetching logs:', error);
         } finally {

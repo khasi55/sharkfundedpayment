@@ -53,13 +53,11 @@ export default function AdminManagementContent() {
     const fetchAdmins = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('admin')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setAdmins(data || []);
+            const response = await fetch('/api/admin/admins');
+            const result = await response.json();
+            if (result.success) {
+                setAdmins(result.data || []);
+            }
         } catch (err: any) {
             console.error('Error fetching admins:', err);
         } finally {
@@ -112,6 +110,7 @@ export default function AdminManagementContent() {
         try {
             if (isEdit && selectedAdmin) {
                 const updateData: any = {
+                    id: selectedAdmin.id,
                     name: formData.name,
                     email: formData.email,
                     permissions: formData.permissions
@@ -120,26 +119,28 @@ export default function AdminManagementContent() {
                     updateData.password = formData.password;
                 }
 
-                const { error } = await supabase
-                    .from('admin')
-                    .update(updateData)
-                    .eq('id', selectedAdmin.id);
-
-                if (error) throw error;
+                const response = await fetch('/api/admin/admins', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updateData)
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
             } else {
                 if (!formData.password) throw new Error('Password is required for new sub-admins');
 
-                const { error } = await supabase
-                    .from('admin')
-                    .insert([{
+                const response = await fetch('/api/admin/admins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                         name: formData.name,
                         email: formData.email,
                         password: formData.password,
-                        role: 'subadmin',
                         permissions: formData.permissions
-                    }]);
-
-                if (error) throw error;
+                    })
+                });
+                const result = await response.json();
+                if (!result.success) throw new Error(result.message);
             }
 
             setIsModalOpen(false);
@@ -156,12 +157,14 @@ export default function AdminManagementContent() {
         if (!adminToDelete) return;
 
         try {
-            const { error } = await supabase
-                .from('admin')
-                .delete()
-                .eq('id', adminToDelete.id);
+            const response = await fetch('/api/admin/admins', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: adminToDelete.id })
+            });
+            const result = await response.json();
+            if (!result.success) throw new Error(result.message);
 
-            if (error) throw error;
             fetchAdmins();
             setShowDeleteConfirm(false);
             setAdminToDelete(null);

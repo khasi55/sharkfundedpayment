@@ -19,34 +19,19 @@ const WebhookLogsContent: React.FC = () => {
 
     useEffect(() => {
         fetchLogs();
-
-        const subscription = supabase
-            .channel('webhook_logs_channel')
-            .on(
-                'postgres_changes',
-                { event: 'INSERT', schema: 'public', table: 'webhook_logs' },
-                (payload) => {
-                    setLogs(prev => [payload.new as WebhookLog, ...prev]);
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(subscription);
-        };
     }, []);
 
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data, error } = await supabase
-                .from('webhook_logs')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(100);
+            const response = await fetch('/api/admin/webhook-logs');
+            const result = await response.json();
 
-            if (error) throw error;
-            setLogs(data || []);
+            if (result.success) {
+                setLogs(result.data || []);
+            } else {
+                console.error('Failed to fetch logs:', result.message);
+            }
         } catch (error) {
             console.error('Error fetching logs:', error);
         } finally {

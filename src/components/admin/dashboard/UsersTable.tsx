@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Users } from 'lucide-react';
+import { Search, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import { UserStat } from './types';
 
 interface UsersTableProps {
@@ -12,9 +12,30 @@ interface UsersTableProps {
     setFilter?: (value: string) => void;
     onBlock?: (email: string) => Promise<void>; // [NEW]
     onUnblock?: (email: string) => Promise<void>; // [NEW]
+    currentPage: number;
+    setCurrentPage: (page: number) => void;
+    totalUsersCount: number;
+    loading: boolean;
 }
 
-export default function UsersTable({ users, search, setSearch, formatDate, formatTime, filter, setFilter, onBlock, onUnblock }: UsersTableProps) {
+const ITEMS_PER_PAGE = 50;
+
+export default function UsersTable({
+    users,
+    search,
+    setSearch,
+    formatDate,
+    formatTime,
+    filter,
+    setFilter,
+    onBlock,
+    onUnblock,
+    currentPage,
+    setCurrentPage,
+    totalUsersCount,
+    loading
+}: UsersTableProps) {
+    const totalPages = Math.ceil(totalUsersCount / ITEMS_PER_PAGE);
     const handleExport = () => {
         // Define headers
         const headers = ['Name', 'Email', 'Total Spend', 'Total Orders', 'Verified Orders', 'Last Active', 'Status', 'Blocked'];
@@ -105,7 +126,14 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white">
-                        {users.length === 0 ? (
+                        {loading ? (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-24 text-center">
+                                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                    <p className="text-slate-500">Loading users...</p>
+                                </td>
+                            </tr>
+                        ) : users.length === 0 ? (
                             <tr>
                                 <td colSpan={7} className="px-6 py-24 text-center">
                                     <div className="flex flex-col items-center gap-3 opacity-50">
@@ -178,6 +206,31 @@ export default function UsersTable({ users, search, setSearch, formatDate, forma
                     </tbody>
                 </table>
             </div>
+
+            {/* Pagination Footer */}
+            {totalPages > 1 && (
+                <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/50">
+                    <div className="text-xs text-slate-500 font-medium">
+                        Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, totalUsersCount)}</span> of <span className="text-slate-900 font-bold">{totalUsersCount}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <button
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

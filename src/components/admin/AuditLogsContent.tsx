@@ -27,7 +27,7 @@ export default function AuditLogsContent() {
             const data = await res.json();
             if (data.success) {
                 setLogs(data.data);
-                setTotalPages(data.totalPages);
+                setTotalPages(data.pagination?.totalPages || 1);
             }
         } catch (error) {
             console.error('Failed to fetch logs:', error);

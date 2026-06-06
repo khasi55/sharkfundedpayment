@@ -64,28 +64,27 @@ BEGIN
                 EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', r.policyname, target_table);
             END LOOP;
             
-            -- I. Standard Dashboard Read Access (Common to all)
-            EXECUTE format('CREATE POLICY "Admin Dashboard Read Access" ON public.%I FOR SELECT TO public USING (true)', target_table);
+            -- Default: ALL access for service_role (Secure)
+            EXECUTE format('CREATE POLICY "Service Role Full Access" ON public.%I FOR ALL TO service_role USING (true) WITH CHECK (true)', target_table);
             
-            -- II. Secure Write Access (Service Role Only)
-            EXECUTE format('CREATE POLICY "Service Role Secure Write" ON public.%I FOR ALL TO service_role USING (true) WITH CHECK (true)', target_table);
+            -- Specific Public Access Exceptions (Minimal)
             
-            -- III. Specific Public Access Exceptions (Required for App Functionality)
-            
-            -- Webhook Logs: Needs public INSERT
+            -- Webhook Logs: Needs public INSERT (for incoming webhooks)
             IF target_table = 'webhook_logs' THEN
                 EXECUTE 'CREATE POLICY "Public Webhook Insert" ON public.webhook_logs FOR INSERT TO public WITH CHECK (id IS NOT NULL)';
             END IF;
             
-            -- Transactions: Needs public INSERT and UPDATE for checkout
+            -- Transactions: Needs public INSERT/SELECT/UPDATE for checkout
+            -- SELECT is allowed publicly to fetch order details by ID (UUID obscurity)
             IF target_table = 'transactions' THEN
-                EXECUTE 'CREATE POLICY "Public Transaction Insert" ON public.transactions FOR INSERT TO public WITH CHECK (amount >= 0)';
+                EXECUTE 'CREATE POLICY "Public Transaction Initiate" ON public.transactions FOR INSERT TO public WITH CHECK (amount >= 0)';
+                EXECUTE 'CREATE POLICY "Public Transaction Read" ON public.transactions FOR SELECT TO public USING (true)';
                 EXECUTE 'CREATE POLICY "Public Transaction Update" ON public.transactions FOR UPDATE TO public USING (true) WITH CHECK (id IS NOT NULL)';
             END IF;
             
-            -- Action OTPs: Needs public INSERT (if used by client, though usually by API)
-            IF target_table = 'action_otps' THEN
-                EXECUTE 'CREATE POLICY "Public OTP Insert" ON public.action_otps FOR INSERT TO public WITH CHECK (id IS NOT NULL)';
+            -- API Logs: Needs public INSERT (for logging incoming requests)
+            IF target_table = 'api_logs' THEN
+                EXECUTE 'CREATE POLICY "Public Log Insert" ON public.api_logs FOR INSERT TO public WITH CHECK (id IS NOT NULL)';
             END IF;
 
             RAISE NOTICE 'Hardened RLS for table: %', target_table;

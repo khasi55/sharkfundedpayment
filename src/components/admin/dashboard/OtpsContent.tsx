@@ -30,63 +30,20 @@ const OtpsContent: React.FC = () => {
 
     // Realtime subscription (only updates if on page 1)
     useEffect(() => {
-        const subscription = supabase
-            .channel('otp_logs_channel')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'webhook_logs',
-                    filter: 'is_otp=eq.true'
-                },
-                (payload) => {
-                    // Only prepend if we are on the first page to avoid confusing jumps
-                    if (page === 1) {
-                        setLogs(prev => [payload.new as OtpLog, ...prev].slice(0, pageSize));
-                        setTotalCount(prev => prev + 1);
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(subscription);
-        };
-    }, [page, pageSize]);
+        fetchLogs(1);
+    }, []);
 
     const fetchLogs = async (pageNumber: number, showLoading = true) => {
         if (showLoading) setLoading(true);
         try {
-            const start = (pageNumber - 1) * pageSize;
-            const end = start + pageSize - 1;
+            const response = await fetch('/api/admin/webhook-logs?is_otp=true&limit=200');
+            const result = await response.json();
 
-            let query = supabase
-                .from('webhook_logs')
-                .select('*', { count: 'exact' })
-                .eq('is_otp', true)
-                .order('created_at', { ascending: false })
-                .range(start, end);
-
-            // If searching, we might need to handle it. 
-            // Note: Supabase basic search on multiple columns is tricky with OR logic combined with other filters.
-            // For now, client-side filtering on the current page is safer unless we implement a complex RPC or text search index.
-            // However, to make pagination useful with search, we ideally need server-side search.
-            // BUT, the current implementation did client-side filtering on 100 records.
-            // Responsive to "add the pagination", typically means paginating the main list. 
-            // I will keep the search variable but it effectively filters the *fetched* page currently 
-            // unless we change the query. Given the complexity, I'll paginate the *main* list 
-            // and perform client-side filtering on the viewed page, OR (better) reset search for now 
-            // as true server-side search across fields is a larger task.
-            // Let's stick to standard pagination of the main list.
-
-            const { data, error, count } = await query;
-
-            if (error) throw error;
-            setLogs(data || []);
-            if (count !== null) setTotalCount(count);
-            setPage(pageNumber);
-
+            if (result.success) {
+                setLogs(result.data || []);
+                setTotalCount(result.data?.length || 0);
+                setPage(pageNumber);
+            }
         } catch (error) {
             console.error('Error fetching OTP logs:', error);
         } finally {

@@ -26,7 +26,7 @@ export async function POST(req: Request) {
             const { data: adminUser, error: fetchError } = await supabaseAdmin
                 .from('admin')
                 .select('two_factor_secret')
-                .eq('email', email)
+                .ilike('email', email)
                 .single();
 
             if (fetchError || !adminUser) {
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
             const { error: updateError } = await supabaseAdmin
                 .from('admin')
                 .update({ two_factor_secret: verifySecret })
-                .eq('email', email);
+                .ilike('email', email);
 
             if (updateError) {
                 return NextResponse.json({ success: false, message: 'Failed to save 2FA secret' }, { status: 500 });

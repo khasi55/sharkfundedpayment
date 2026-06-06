@@ -2,11 +2,18 @@ import React, { useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { Transaction } from './types';
 
-interface RevenueChartProps {
-    transactions: Transaction[];
+interface DailyStat {
+    date: string;
+    totalAmount: number;
+    count: number;
+    verifiedCount: number;
 }
 
-export default function RevenueChart({ transactions }: RevenueChartProps) {
+interface RevenueChartProps {
+    dailyStats: DailyStat[];
+}
+
+export default function RevenueChart({ dailyStats }: RevenueChartProps) {
     const data = useMemo(() => {
         // Generate last 30 days
         const days = Array.from({ length: 30 }, (_, i) => {
@@ -16,11 +23,8 @@ export default function RevenueChart({ transactions }: RevenueChartProps) {
         });
 
         const map = new Map<string, number>();
-        transactions.forEach(t => {
-            if (t.status === 'verified') {
-                const date = t.created_at.split('T')[0];
-                map.set(date, (map.get(date) || 0) + t.amount);
-            }
+        (dailyStats || []).forEach(s => {
+            map.set(s.date, s.totalAmount);
         });
 
         return days.map(date => ({
@@ -28,7 +32,7 @@ export default function RevenueChart({ transactions }: RevenueChartProps) {
             fullDate: date,
             amount: map.get(date) || 0
         }));
-    }, [transactions]);
+    }, [dailyStats]);
 
     const totalRevenue = data.reduce((sum, item) => sum + item.amount, 0);
     const trend = data.length >= 2 ?

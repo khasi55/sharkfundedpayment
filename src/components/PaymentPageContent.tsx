@@ -78,99 +78,80 @@ export default function PaymentPageContent() {
         const initializePayment = async () => {
             let orderFound = false;
 
-            // 1. Priority: Fetch from DB using Session ID (API Created Order - Secure)
+            // 1. Fetch Order from DB via Secure API (NOT direct public select)
             if (urlSessionId) {
                 try {
-                    const { data, error } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .or(`id.eq.${urlSessionId},session_id.eq.${urlSessionId}`)
-                        .maybeSingle();
+                    const response = await fetch(`/api/checkout-details?orderId=${urlSessionId}`);
+                    const result = await response.json();
 
-                    if (data) {
+                    if (result.success && result.data) {
+                        const transaction = result.data;
                         orderFound = true;
-                        if (data.status === 'verified') {
-                            // Already paid
+
+                        if (transaction.status === 'verified') {
                             setState(prev => ({
                                 ...prev,
-                                amount: data.amount.toString(),
-                                name: data.customer_details?.name || '',
-                                email: data.customer_details?.email || '',
+                                amount: transaction.amount.toString(),
+                                name: transaction.customer_details?.name || '',
+                                email: transaction.customer_details?.email || '',
                                 step: 'verified'
                             }));
-                        } else if (data.status === 'rejected') {
-                            // Payment rejected - End Session
+                        } else if (transaction.status === 'rejected') {
                             setState(prev => ({
                                 ...prev,
-                                amount: data.amount.toString(),
-                                name: data.customer_details?.name || '',
-                                email: data.customer_details?.email || '',
+                                amount: transaction.amount.toString(),
+                                name: transaction.customer_details?.name || '',
+                                email: transaction.customer_details?.email || '',
                                 step: 'failed',
                                 error: 'Payment verification rejected by admin.'
                             }));
-                        } else if (data.status === 'failed') {
-                            // Payment failed (e.g. Amount Mismatch)
+                        } else if (transaction.status === 'failed') {
                             setState(prev => ({
                                 ...prev,
-                                amount: data.amount.toString(),
-                                name: data.customer_details?.name || '',
-                                email: data.customer_details?.email || '',
+                                amount: transaction.amount.toString(),
+                                name: transaction.customer_details?.name || '',
+                                email: transaction.customer_details?.email || '',
                                 step: 'failed',
-                                error: data.customer_details?.failure_reason || 'Payment failed.'
+                                error: transaction.customer_details?.failure_reason || 'Payment failed.'
                             }));
-                        } else if (data.status === 'cancelled') {
-                            // Payment cancelled by user
+                        } else if (transaction.status === 'expired') {
                             setState(prev => ({
                                 ...prev,
-                                amount: data.amount.toString(),
-                                name: data.customer_details?.name || '',
-                                email: data.customer_details?.email || '',
-                                step: 'cancelled',
-                                error: data.customer_details?.failure_reason ? `Payment cancelled: ${data.customer_details.failure_reason}` : 'Payment cancelled.'
+                                amount: transaction.amount.toString(),
+                                name: transaction.customer_details?.name || '',
+                                email: transaction.customer_details?.email || '',
+                                step: 'failed',
+                                error: 'This payment link has expired.'
                             }));
                         } else {
-                            // Pending payment
+                            // Pending or processing
                             setState(prev => ({
                                 ...prev,
-                                amount: data.amount.toString(),
-                                name: data.customer_details?.name || '',
-                                email: data.customer_details?.email || '',
-                                step: 'payment' // Force step 2 directly
+                                amount: transaction.amount.toString(),
+                                name: transaction.customer_details?.name || '',
+                                email: transaction.customer_details?.email || '',
+                                step: 'payment'
                             }));
                         }
-                        if (data.order_id) setOfficialOrderId(data.order_id);
-                        if (data.customer_details?.callback_url) setCallbackUrl(data.customer_details.callback_url);
-                        if (data.customer_details?.reference_id) setReferenceId(data.customer_details.reference_id);
-                        if (data.customer_details?.success_url) setSuccessUrl(data.customer_details.success_url);
-                        if (data.customer_details?.failed_url) setFailedUrl(data.customer_details.failed_url);
+
+                        if (transaction.order_id) setOfficialOrderId(transaction.order_id);
+                        if (transaction.customer_details?.callback_url) setCallbackUrl(transaction.customer_details.callback_url);
+                        if (transaction.customer_details?.reference_id) setReferenceId(transaction.customer_details.reference_id);
+                        if (transaction.customer_details?.success_url) setSuccessUrl(transaction.customer_details.success_url);
+                        if (transaction.customer_details?.failed_url) setFailedUrl(transaction.customer_details.failed_url);
                     }
                 } catch (err) {
                     console.error("Error fetching order:", err);
                 }
             }
 
-            // 2. Fallback: URL Query Params (Legacy/Direct Link - Insecure/Editable)
-            // Only use if no strict order was found in DB
-            if (!orderFound && queryAmount && queryName && queryEmail) {
-                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (emailRegex.test(queryEmail)) {
-                    setState(prev => ({
-                        ...prev,
-                        amount: queryAmount,
-                        name: queryName,
-                        email: queryEmail,
-                        step: 'payment'
-                    }));
-                } else {
-                    setState(prev => ({
-                        ...prev,
-                        amount: queryAmount,
-                        name: queryName,
-                        email: queryEmail
-                    }));
-                }
-                if (queryReferenceId) setReferenceId(queryReferenceId);
-                if (queryCallbackUrl) setCallbackUrl(queryCallbackUrl);
+            // 2. Reject: If no strict order was found in DB
+            if (!orderFound) {
+                setState(prev => ({
+                    ...prev,
+                    step: 'failed',
+                    error: 'Invalid or expired payment link. Please request a new link from the merchant.'
+                }));
             }
 
             setSessionId(urlSessionId || '');
@@ -304,61 +285,8 @@ export default function PaymentPageContent() {
                 });
 
                 if (response.data.success) {
-                    // Success! Record in Supabase
-                    let finalData;
-                    let dbError;
-
-                    // 1. Try to UPDATE existing transaction first
-                    if (sessionId) {
-                        const { data: updatedData, error: updateError } = await supabase
-                            .from('transactions')
-                            .update({
-                                amount: state.amount,
-                                utr: state.utr,
-                                status: 'verified',
-                                customer_details: { name: state.name, email: state.email },
-                            })
-                            .or(`id.eq.${sessionId},session_id.eq.${sessionId}`)
-                            .select()
-                            .maybeSingle();
-
-                        if (updatedData) {
-                            finalData = updatedData;
-                        }
-                    }
-
-                    // 2. If no existing transaction updated, INSERT new one
-                    if (!finalData) {
-                        const { data: insertedData, error: insertError } = await supabase
-                            .from('transactions')
-                            .insert([
-                                {
-                                    amount: state.amount,
-                                    utr: state.utr,
-                                    session_id: sessionId, // Store UUID in session_id
-                                    status: 'verified',
-                                    customer_details: { name: state.name, email: state.email },
-                                },
-                            ])
-                            .select()
-                            .single();
-
-                        finalData = insertedData;
-                        dbError = insertError;
-                    }
-
-                    if (dbError) {
-                        console.error('Supabase error:', dbError);
-                        // If duplicate UTR, fetch the existing one
-                        if (dbError.code === '23505') {
-                            const { data: existingData } = await supabase
-                                .from('transactions')
-                                .select()
-                                .eq('utr', state.utr)
-                                .single();
-                            finalData = existingData;
-                        }
-                    }
+                    // Success! Server has updated/inserted the transaction.
+                    const finalData = response.data.data;
 
                     if (finalData && finalData.order_id) {
                         setOfficialOrderId(finalData.order_id);

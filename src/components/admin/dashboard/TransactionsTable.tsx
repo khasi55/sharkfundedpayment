@@ -20,9 +20,12 @@ interface TransactionsTableProps {
     setSelectedTransaction: (transaction: Transaction) => void;
     initiateStatusUpdate: (id: string, status: 'verified' | 'rejected') => void;
     onCreateLink?: () => void;
+    currentPage: number;
+    setCurrentPage: (page: number) => void;
+    totalTransactionsCount: number;
 }
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 50;
 
 export default function TransactionsTable({
     transactions,
@@ -41,22 +44,16 @@ export default function TransactionsTable({
     getStatusStyle,
     setSelectedTransaction,
     initiateStatusUpdate,
-    onCreateLink
+    onCreateLink,
+    currentPage,
+    setCurrentPage,
+    totalTransactionsCount
 }: TransactionsTableProps) {
     const [showDateFilter, setShowDateFilter] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
 
     // Pagination Logic
-    const totalPages = Math.ceil(transactions.length / ITEMS_PER_PAGE);
-    const paginatedTransactions = useMemo(() => {
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        return transactions.slice(start, start + ITEMS_PER_PAGE);
-    }, [transactions, currentPage]);
-
-    // Reset page when filters change
-    React.useEffect(() => {
-        setCurrentPage(1);
-    }, [search, filter, dateFilter, customDate]);
+    const totalPages = Math.ceil(totalTransactionsCount / ITEMS_PER_PAGE);
+    const paginatedTransactions = transactions;
 
     // Helper for improved status badge
     const StatusBadge = ({ status }: { status: string }) => {
@@ -366,18 +363,18 @@ export default function TransactionsTable({
                 {totalPages > 1 && (
                     <div className="p-4 border-t border-slate-200 flex items-center justify-between bg-slate-50/50">
                         <div className="text-xs text-slate-500 font-medium">
-                            Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, transactions.length)}</span> of <span className="text-slate-900 font-bold">{transactions.length}</span>
+                            Showing <span className="text-slate-900 font-bold">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to <span className="text-slate-900 font-bold">{Math.min(currentPage * ITEMS_PER_PAGE, totalTransactionsCount)}</span> of <span className="text-slate-900 font-bold">{totalTransactionsCount}</span>
                         </div>
                         <div className="flex gap-2">
                             <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                                 disabled={currentPage === 1}
                                 className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             >
                                 <ChevronLeft size={16} />
                             </button>
                             <button
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                                 disabled={currentPage === totalPages}
                                 className="p-2 bg-white border border-slate-200 rounded-lg text-slate-500 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             >
