@@ -7,7 +7,9 @@ export async function POST(request: Request) {
         console.log('Received Webhook Headers:', headers);
 
         // [SECURE] Verify Webhook Secret to prevent spoofing
-        const webhookSecret = headers['x-shark-webhook-secret'];
+        const url = new URL(request.url);
+        const urlSecret = url.searchParams.get('secret');
+        const webhookSecret = headers['x-shark-webhook-secret'] || urlSecret;
         const expectedSecret = process.env.SHARK_PAYMENT_KEY_SECRET;
 
         if (!webhookSecret || webhookSecret !== expectedSecret) {
@@ -26,8 +28,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'No text found in webhook payload. Received: ' + JSON.stringify(body) }, { status: 400 });
         }
 
-        // OTP Detection Logic
-        const utrMatch = text.match(/\b\d{12}\b/); // Look for exactly 12 digits
+        // UTR Detection Logic: Look for RRN or UTR prefix first, otherwise fallback to exactly 12 digits
+        // Prioritize RRN#123456789012 or UTR: 123456789012
+        const explicitUtrMatch = text.match(/(?:RRN|UTR)[#\s:-]*(\d{12})\b/i);
+        const fallbackUtrMatch = text.match(/\b\d{12}\b/);
+        
+        let utrMatch = explicitUtrMatch ? [explicitUtrMatch[1]] : fallbackUtrMatch;
         const amountMatch = text.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{2})?)/i);
 
         // Refined OTP Detection: Look for exactly 6 digits
