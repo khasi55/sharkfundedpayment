@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin as supabase } from '@/lib/supabase';
 import { sendPaymentSuccessEmail } from '@/utils/email';
 import { sendMerchantWebhook } from '@/utils/webhooks';
 import { z } from 'zod';
@@ -263,6 +263,8 @@ export async function POST(request: Request) {
 
                     if (!updateErr && updatedTx) {
                         transaction = updatedTx;
+                    } else if (updateErr) {
+                        console.error('[VerifyPayment] Error updating transaction status:', updateErr);
                     }
                 } else {
                     // Create transaction on server if it doesn't exist
