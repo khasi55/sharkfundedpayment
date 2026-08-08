@@ -40,6 +40,9 @@ export async function POST(req: Request) {
             }
         }
 
+        const cleanToken = token.trim();
+        const cleanSecret = verifySecret ? verifySecret.trim() : '';
+
         const totp = new TOTP({
             algorithm: 'sha1',
             digits: 6,
@@ -48,10 +51,10 @@ export async function POST(req: Request) {
             base32: new ScureBase32Plugin()
         });
 
-        const { valid } = await totp.verify(token, { secret: verifySecret });
+        const { valid } = await totp.verify(cleanToken, { secret: cleanSecret, epochTolerance: 60 });
 
         if (!valid) {
-            return NextResponse.json({ success: false, message: 'Invalid 2FA code' }, { status: 401 });
+            return NextResponse.json({ success: false, message: 'Invalid 2FA code. Please check your authenticator app and try again.' }, { status: 401 });
         }
 
         if (isSetup) {

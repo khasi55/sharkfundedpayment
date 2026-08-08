@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+export async function GET() {
+    return NextResponse.json({
+        status: 'active',
+        message: 'Payment Webhook Endpoint is online. Send POST requests to submit webhooks.',
+    });
+}
+
 export async function POST(request: Request) {
     try {
         const headers = Object.fromEntries(request.headers);
