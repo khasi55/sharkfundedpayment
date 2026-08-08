@@ -83,11 +83,12 @@ const AdminLoginPage: React.FC = () => {
         setError(null);
 
         try {
+            const targetEmail = tempUserData?.email || email;
             const response = await fetch('/api/admin/2fa/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    email: tempUserData.email,
+                    email: targetEmail,
                     token: twoFactorCode,
                     secret: step === '2fa_setup' ? twoFactorSecret : undefined,
                     isSetup: step === '2fa_setup'
@@ -97,7 +98,7 @@ const AdminLoginPage: React.FC = () => {
             const result = await response.json();
 
             if (result.success) {
-                completeLogin();
+                completeLogin(result.user);
             } else {
                 setError(result.message || 'Invalid code');
                 setLoading(false);
@@ -108,13 +109,15 @@ const AdminLoginPage: React.FC = () => {
         }
     };
 
-    const completeLogin = () => {
-        localStorage.setItem('admin_user', JSON.stringify(tempUserData));
-        // Set cookie for middleware with proper attributes
-        const isProduction = process.env.NODE_ENV === 'production';
-        const cookieValue = encodeURIComponent(JSON.stringify(tempUserData));
-        document.cookie = `admin_session=${cookieValue}; path=/; max-age=86400; SameSite=Lax; ${isProduction ? 'Secure' : ''}`;
-        router.push('/sharkfunded2logintoadminwithpermission');
+    const completeLogin = (verifiedUser?: any) => {
+        const userData = verifiedUser || tempUserData;
+        if (userData) {
+            localStorage.setItem('admin_user', JSON.stringify(userData));
+            const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+            const cookieValue = encodeURIComponent(JSON.stringify(userData));
+            document.cookie = `admin_session=${cookieValue}; path=/; max-age=86400; SameSite=Lax${isHttps ? '; Secure' : ''}`;
+        }
+        window.location.href = '/sharkfunded2logintoadminwithpermission';
     };
 
     if (step === '2fa_setup') {

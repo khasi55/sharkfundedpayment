@@ -15,17 +15,18 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: 'Email and token are required' }, { status: 400 });
         }
 
+        let adminUserData: any = null;
         let verifySecret = secret;
 
         if (!isSetup) {
-            const res = await query(`SELECT two_factor_secret FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]);
-            const adminUser = res.rows[0];
+            const res = await query(`SELECT id, email, name, role, permissions, two_factor_secret FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]);
+            adminUserData = res.rows[0];
 
-            if (!adminUser) {
+            if (!adminUserData) {
                 return NextResponse.json({ success: false, message: 'Admin user not found' }, { status: 404 });
             }
 
-            if (!adminUser.two_factor_secret) {
+            if (!adminUserData.two_factor_secret) {
                 return NextResponse.json({
                     success: false,
                     message: '2FA is not set up for this user',
@@ -33,11 +34,13 @@ export async function POST(req: Request) {
                 }, { status: 400 });
             }
 
-            verifySecret = adminUser.two_factor_secret;
+            verifySecret = adminUserData.two_factor_secret;
         } else {
             if (!secret) {
                 return NextResponse.json({ success: false, message: 'Secret is required for setup verification' }, { status: 400 });
             }
+            const res = await query(`SELECT id, email, name, role, permissions FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]);
+            adminUserData = res.rows[0];
         }
 
         const cleanToken = token.trim();
@@ -64,7 +67,33 @@ export async function POST(req: Request) {
             );
         }
 
-        return NextResponse.json({ success: true, message: 'Verification successful' });
+        const userPayload = {
+            id: adminUserData?.id,
+            email: adminUserData?.email || email,
+            name: adminUserData?.name || email.split('@')[0],
+            role: adminUserData?.role || 'subadmin',
+            permissions: adminUserData?.permissions || []
+        };
+
+        const response = NextResponse.json({
+            success: true,
+            message: 'Verification successful',
+            user: userPayload
+        });
+
+        const cookieValue = encodeURIComponent(JSON.stringify(userPayload));
+        const isHttps = req.url.startsWith('https://');
+
+        response.cookies.set({
+            name: 'admin_session',
+            value: cookieValue,
+            path: '/',
+            maxAge: 86400,
+            sameSite: 'lax',
+            secure: isHttps
+        });
+
+        return response;
 
     } catch (error: any) {
         console.error('Error verifying 2FA:', error);
