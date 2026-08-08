@@ -11,7 +11,7 @@ export async function POST(req: Request) {
         }
 
         const res = await query(
-            `SELECT id, email, password, name, role, permissions FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`,
+            `SELECT id, email, password, name, role, permissions, two_factor_secret, two_factor_enabled FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`,
             [email]
         );
 
@@ -28,7 +28,8 @@ export async function POST(req: Request) {
                 email: adminUser.email,
                 name: adminUser.name,
                 role: adminUser.role || 'subadmin',
-                permissions: adminUser.permissions || []
+                permissions: adminUser.permissions || [],
+                has2FA: Boolean(adminUser.two_factor_enabled && adminUser.two_factor_secret)
             }
         });
     } catch (error: any) {

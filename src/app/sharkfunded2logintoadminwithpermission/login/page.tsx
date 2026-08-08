@@ -36,7 +36,12 @@ const AdminLoginPage: React.FC = () => {
 
             if (data && data.success) {
                 setTempUserData(data.user);
-                check2FAStatus(data.user);
+                if (data.user.has2FA) {
+                    setStep('2fa_verify');
+                    setLoading(false);
+                } else {
+                    initiate2FASetup(data.user.email);
+                }
             } else {
                 setError(data?.message || 'Invalid credentials');
                 setLoading(false);
@@ -44,54 +49,6 @@ const AdminLoginPage: React.FC = () => {
         } catch (err: any) {
             console.error('Login error:', err);
             setError(err.message || 'An unexpected error occurred');
-            setLoading(false);
-        }
-    };
-
-    const check2FAStatus = async (user: any) => {
-        try {
-            // We use the verify endpoint's logic to check status implicitly
-            // If we send a dummy token, it will tell us if 2FA is set up or not
-            // This is a bit of a hack but avoids changing the RPC immediately if not needed.
-            // Alternatively, we could have added a 'check-status' endpoint.
-
-            // Let's try to generate a secret. If it returns success, we can prompt for setup.
-            // But wait, generate always generates new. 
-            // We need to know if they ALREADY have it.
-
-            // NOTE: The proper way is to have the RPC return `2fa_enabled: true/false`.
-            // Since we can't easily change the RPC (user action required), let's assume 
-            // we can hit an API to check.
-
-            // Let's try to "verify" with a dummy token.
-            const response = await fetch('/api/admin/2fa/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    email: user.email,
-                    token: '000000', // Dummy
-                    isSetup: false
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.requiresSetup) {
-                // User needs to set up 2FA
-                initiate2FASetup(user.email);
-            } else if (result.success === false && (result.message?.includes('Invalid 2FA code') || response.status === 401)) {
-                // User has 2FA, just needs to verify
-                setStep('2fa_verify');
-                setLoading(false);
-            } else {
-                // Unexpected error response
-                setError(result.message || 'Unexpected 2FA state');
-                setLoading(false);
-            }
-
-        } catch (err) {
-            console.error('2FA Check Error', err);
-            setError('Failed to check 2FA status');
             setLoading(false);
         }
     };
