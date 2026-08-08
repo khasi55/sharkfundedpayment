@@ -11,6 +11,7 @@ interface AdminUser {
     name: string;
     role: string;
     permissions: string[];
+    two_factor_enabled?: boolean;
     created_at: string;
 }
 
@@ -173,6 +174,30 @@ export default function AdminManagementContent() {
         }
     };
 
+    const handleReset2FA = async (admin: AdminUser) => {
+        if (!confirm(`Are you sure you want to reset 2FA for ${admin.name} (${admin.email})? They will receive a new QR code scan on their next login.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/admin/2fa/reset', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: admin.email })
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert(result.message);
+                fetchAdmins();
+            } else {
+                alert('Failed to reset 2FA: ' + (result.message || 'Unknown error'));
+            }
+        } catch (err: any) {
+            console.error('Reset 2FA error:', err);
+            alert('Error resetting 2FA');
+        }
+    };
+
     const filteredAdmins = admins.filter(admin =>
         admin.name?.toLowerCase().includes(search.toLowerCase()) ||
         admin.email?.toLowerCase().includes(search.toLowerCase())
@@ -279,6 +304,13 @@ export default function AdminManagementContent() {
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleReset2FA(admin)}
+                                                    className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                                    title="Reset 2FA (Require new QR scan)"
+                                                >
+                                                    <Key size={16} />
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenEditModal(admin)}
                                                     className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"

@@ -11,7 +11,7 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
 
-        const res = await query(`SELECT id, email, name, role, permissions, created_at FROM admin ORDER BY created_at DESC`);
+        const res = await query(`SELECT id, email, name, role, permissions, two_factor_enabled, created_at FROM admin ORDER BY created_at DESC`);
 
         return NextResponse.json({
             success: true,
