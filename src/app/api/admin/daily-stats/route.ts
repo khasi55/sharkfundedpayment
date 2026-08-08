@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
@@ -11,29 +11,26 @@ export async function POST(request: Request) {
 
         const { startDate, endDate } = await request.json().catch(() => ({}));
 
-        let query = supabase
-            .from('transactions')
-            .select('created_at, amount, status');
-
-        if (startDate) {
-            query = query.gte('created_at', startDate);
-        } else {
+        let defaultStartDate = startDate;
+        if (!defaultStartDate) {
             const d = new Date();
             d.setDate(d.getDate() - 90);
-            query = query.gte('created_at', d.toISOString());
+            defaultStartDate = d.toISOString();
         }
+
+        let sql = `SELECT created_at, amount, status FROM transactions WHERE created_at >= $1`;
+        const params: any[] = [defaultStartDate];
 
         if (endDate) {
-            query = query.lte('created_at', endDate);
+            sql += ` AND created_at <= $2`;
+            params.push(endDate);
         }
 
-        const { data: transactions, error } = await query;
-
-        if (error) throw error;
+        const res = await query(sql, params);
 
         const dailyStats: Record<string, { totalAmount: number; count: number; verifiedCount: number }> = {};
 
-        transactions.forEach((txn: any) => {
+        res.rows.forEach((txn: any) => {
             const date = new Date(txn.created_at).toISOString().split('T')[0];
 
             if (!dailyStats[date]) {

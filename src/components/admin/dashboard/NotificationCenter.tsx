@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import NotificationList from './notifications/NotificationList';
 import { Notification } from './notifications/NotificationItem';
@@ -9,11 +8,10 @@ const NotificationCenter = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
-    // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -25,88 +23,15 @@ const NotificationCenter = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const fetchNotifications = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('notifications')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(20);
-
-            if (error) throw error;
-
-            setNotifications(data || []);
-            setUnreadCount(data?.filter(n => !n.is_read).length || 0);
-        } catch (error) {
-            console.error('Error fetching notifications:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const markAsRead = async (id: string) => {
-        try {
-            const { error } = await supabase
-                .from('notifications')
-                .update({ is_read: true })
-                .eq('id', id);
-
-            if (error) throw error;
-
-            // Optimistic update
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-            setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch (error) {
-            console.error('Error marking as read:', error);
-        }
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+        setUnreadCount(prev => Math.max(0, prev - 1));
     };
 
     const markAllAsRead = async () => {
-        try {
-            const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-            if (unreadIds.length === 0) return;
-
-            const { error } = await supabase
-                .from('notifications')
-                .update({ is_read: true })
-                .in('id', unreadIds);
-
-            if (error) throw error;
-
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-            setUnreadCount(0);
-        } catch (error) {
-            console.error('Error marking all as read:', error);
-        }
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+        setUnreadCount(0);
     };
-
-    useEffect(() => {
-        fetchNotifications();
-
-        // Realtime Subscription
-        const subscription = supabase
-            .channel('notifications_channel')
-            .on(
-                'postgres_changes',
-                {
-                    event: 'INSERT',
-                    schema: 'public',
-                    table: 'notifications',
-                },
-                (payload) => {
-                    const newNotification = payload.new as Notification;
-                    setNotifications(prev => [newNotification, ...prev]);
-                    setUnreadCount(prev => prev + 1);
-
-                    // Optional: Play sound or show browser notification here
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(subscription);
-        };
-    }, []);
 
     const handleNotificationClick = (notification: Notification) => {
         if (!notification.is_read) {
@@ -122,39 +47,26 @@ const NotificationCenter = () => {
         <div className="relative" ref={dropdownRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="relative p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-slate-600 hover:text-slate-900 focus:outline-none flex items-center justify-center"
+                aria-label="Notifications"
             >
                 <Bell size={20} />
                 {unreadCount > 0 && (
-                    <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-rose-500 border-2 border-white rounded-full animate-pulse"></span>
+                    <span className="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                 )}
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                    <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                        <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
-                        {unreadCount > 0 && (
-                            <button
-                                onClick={markAllAsRead}
-                                className="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                            >
-                                Mark all as read
-                            </button>
-                        )}
-                    </div>
-
+                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
                     <NotificationList
                         notifications={notifications}
                         loading={loading}
+                        onMarkAsRead={markAsRead}
+                        onMarkAllAsRead={markAllAsRead}
                         onNotificationClick={handleNotificationClick}
                     />
-
-                    <div className="p-2 border-t border-slate-100 bg-slate-50/50 text-center">
-                        <button className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors">
-                            View All History
-                        </button>
-                    </div>
                 </div>
             )}
         </div>

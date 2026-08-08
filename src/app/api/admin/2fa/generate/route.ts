@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server';
 import { TOTP } from 'otplib';
 import { NodeCryptoPlugin } from '@otplib/plugin-crypto-node';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
-// Disable caching for this route
 export const dynamic = 'force-dynamic';
-
-// NOTE: This route is accessible without admin_session during the login flow.
-// Future hardening: Require a short-lived password-verification token.
 
 export async function POST(req: Request) {
     try {
@@ -19,18 +15,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: 'Email is required' }, { status: 400 });
         }
 
-        // Verify the user exists in the admin table
-        const { data: adminUser, error: fetchError } = await supabaseAdmin
-            .from('admin')
-            .select('email, id')
-            .ilike('email', email)
-            .single();
+        const res = await query(`SELECT id, email FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]);
+        const adminUser = res.rows[0];
 
-        if (fetchError || !adminUser) {
+        if (!adminUser) {
             return NextResponse.json({ success: false, message: 'Admin user not found' }, { status: 404 });
         }
 
-        // Create TOTP instance with Node crypto and Scure Base32 plugins
         const totp = new TOTP({
             algorithm: 'sha1',
             digits: 6,
@@ -39,11 +30,7 @@ export async function POST(req: Request) {
             base32: new ScureBase32Plugin()
         });
 
-        // Generate a new secret
         const secret = totp.generateSecret();
-
-        // Generate the otpauth URL for QR code
-        // format: otpauth://totp/Label:Account?secret=Secret&issuer=Issuer
         const otpauth = totp.toURI({
             label: email,
             issuer: 'SharkFunded Admin',

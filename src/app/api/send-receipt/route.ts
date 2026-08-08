@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { sendPaymentSuccessEmail } from '@/utils/email';
 
 export async function POST(request: Request) {
@@ -11,26 +11,17 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'UTR is required' }, { status: 400 });
         }
 
+        const res = await query(`SELECT * FROM transactions WHERE utr = $1 LIMIT 1`, [utr]);
+        const transaction = res.rows[0];
 
-
-        // 1. Fetch Transaction
-        const { data: transaction, error } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('utr', utr)
-            .single();
-
-        if (error || !transaction) {
-            console.error('Transaction not found:', error);
+        if (!transaction) {
             return NextResponse.json({ success: false, message: 'Transaction not found' }, { status: 404 });
         }
 
-        // 2. Check Status
         if (transaction.status !== 'verified') {
             return NextResponse.json({ success: false, message: 'Transaction is not verified yet' }, { status: 400 });
         }
 
-        // 3. Send Email
         const recipientEmail = providedEmail || transaction.customer_details?.email;
         const recipientName = providedName || transaction.customer_details?.name || 'Customer';
         const orderId = transaction.order_id || transaction.session_id || 'N/A';

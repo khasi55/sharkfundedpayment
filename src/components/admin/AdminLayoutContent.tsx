@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, Users, CreditCard, LogOut, ShieldCheck, Menu, X, Activity, Key, MessageSquare, Landmark, AlertTriangle } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 
 import ConfirmationModal from '@/components/ConfirmationModal';
 import NotificationCenter from './dashboard/NotificationCenter';

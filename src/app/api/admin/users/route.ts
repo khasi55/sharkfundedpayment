@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
@@ -21,32 +21,60 @@ export async function GET(req: Request) {
         const limit = parseInt(limitParam) || 50;
         const offset = (page - 1) * limit;
 
-        let query = supabaseAdmin
-            .from('user_stats_view')
-            .select('*', { count: 'exact' });
+        const whereClauses: string[] = [`t.customer_details->>'email' IS NOT NULL`, `t.customer_details->>'email' != ''`];
+        const params: any[] = [];
 
-        // 1. Apply Search Filter
         if (search) {
-            query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+            params.push(`%${search}%`);
+            const pIdx = params.length;
+            whereClauses.push(`(t.customer_details->>'email' ILIKE $${pIdx} OR t.customer_details->>'name' ILIKE $${pIdx})`);
         }
 
-        // 2. Apply Verified Orders Filter
+        let havingClause = '';
         if (filter === 'verified') {
-            query = query.gt('verified_orders', 0);
+            havingClause = 'HAVING COUNT(CASE WHEN t.status = \'verified\' THEN 1 END) > 0';
         }
 
-        // 3. Sort by total spend descending
-        query = query.order('total_spend', { ascending: false });
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-        // 4. Paginate
-        query = query.range(offset, offset + limit - 1);
+        // Total count of distinct users matching filter
+        const countSql = `
+            SELECT COUNT(*) FROM (
+                SELECT LOWER(t.customer_details->>'email')
+                FROM transactions t
+                ${whereSql}
+                GROUP BY LOWER(t.customer_details->>'email')
+                ${havingClause}
+            ) sub
+        `;
+        const countRes = await query(countSql, params);
+        const total = parseInt(countRes.rows[0]?.count || '0');
 
-        const { data, error, count } = await query;
+        params.push(limit);
+        const limitIdx = params.length;
+        params.push(offset);
+        const offsetIdx = params.length;
 
-        if (error) throw error;
+        const dataSql = `
+            SELECT 
+                COALESCE(t.customer_details->>'email', '') AS email,
+                MAX(t.customer_details->>'name') AS name,
+                SUM(CASE WHEN t.status = 'verified' THEN t.amount ELSE 0 END) AS total_spend,
+                COUNT(*) AS total_orders,
+                COUNT(CASE WHEN t.status = 'verified' THEN 1 END) AS verified_orders,
+                MAX(t.created_at) AS last_active,
+                EXISTS(SELECT 1 FROM blocked_users b WHERE LOWER(b.email) = LOWER(COALESCE(t.customer_details->>'email', ''))) AS is_blocked
+            FROM transactions t
+            ${whereSql}
+            GROUP BY LOWER(t.customer_details->>'email'), COALESCE(t.customer_details->>'email', '')
+            ${havingClause}
+            ORDER BY total_spend DESC
+            LIMIT $${limitIdx} OFFSET $${offsetIdx}
+        `;
 
-        // Map database view snake_case fields to frontend UserStat camelCase fields
-        const users = (data || []).map((u: any) => ({
+        const dataRes = await query(dataSql, params);
+
+        const users = dataRes.rows.map((u: any) => ({
             email: u.email,
             name: u.name,
             totalSpend: Number(u.total_spend || 0),
@@ -60,11 +88,12 @@ export async function GET(req: Request) {
         return NextResponse.json({
             success: true,
             users,
-            total: count || 0,
+            total,
             page,
             limit
         });
     } catch (error: any) {
+        console.error('Error fetching admin users:', error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

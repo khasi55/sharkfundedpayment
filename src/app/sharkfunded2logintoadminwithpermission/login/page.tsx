@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { Lock, Mail, ArrowRight, AlertCircle, Loader2, ShieldCheck, QrCode } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -27,32 +26,17 @@ const AdminLoginPage: React.FC = () => {
         setError(null);
 
         try {
-            const { data, error } = await supabase.rpc('check_admin_login', {
-                email_input: email,
-                password_input: password
+            const response = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
             });
 
-            if (error) throw error;
+            const data = await response.json();
 
             if (data && data.success) {
-                // Login credentials valid, now check 2FA status
                 setTempUserData(data.user);
-
-                // Check if user has 2FA set up by calling our verification endpoint with a dummy token
-                // or a specific check endpoint. For now, let's try to verify with an empty token 
-                // to see if it requires setup, or use a dedicated check.
-                // Actually, let's just use the fact that we can't see the secret from the client 
-                // to trigger a "check 2FA" flow. 
-                // Better approach: We need to know if 2FA is enabled. 
-                // Since we can't modify the RPC right now easily to return 2fa status,
-                // we'll try to initiate verification.
-
-                // Let's assume we need to check if 2FA is required.
-                // We'll use a new endpoint or modify the logic.
-                // For this implementation, let's try to "verify" with a flag.
-
                 check2FAStatus(data.user);
-
             } else {
                 setError(data?.message || 'Invalid credentials');
                 setLoading(false);

@@ -2,13 +2,9 @@ import { NextResponse } from 'next/server';
 import { TOTP } from 'otplib';
 import { NodeCryptoPlugin } from '@otplib/plugin-crypto-node';
 import { ScureBase32Plugin } from '@otplib/plugin-base32-scure';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
-// Disable caching
 export const dynamic = 'force-dynamic';
-
-// NOTE: This route is accessible without admin_session during the login flow.
-// Future hardening: Require a short-lived password-verification token.
 
 export async function POST(req: Request) {
     try {
@@ -21,15 +17,11 @@ export async function POST(req: Request) {
 
         let verifySecret = secret;
 
-        // If not checking a new setup, fetch the secret from the database
         if (!isSetup) {
-            const { data: adminUser, error: fetchError } = await supabaseAdmin
-                .from('admin')
-                .select('two_factor_secret')
-                .ilike('email', email)
-                .single();
+            const res = await query(`SELECT two_factor_secret FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1`, [email]);
+            const adminUser = res.rows[0];
 
-            if (fetchError || !adminUser) {
+            if (!adminUser) {
                 return NextResponse.json({ success: false, message: 'Admin user not found' }, { status: 404 });
             }
 
@@ -43,13 +35,11 @@ export async function POST(req: Request) {
 
             verifySecret = adminUser.two_factor_secret;
         } else {
-            // validating a new setup
             if (!secret) {
                 return NextResponse.json({ success: false, message: 'Secret is required for setup verification' }, { status: 400 });
             }
         }
 
-        // Create TOTP instance with Node crypto and Scure Base32 plugins
         const totp = new TOTP({
             algorithm: 'sha1',
             digits: 6,
@@ -58,28 +48,19 @@ export async function POST(req: Request) {
             base32: new ScureBase32Plugin()
         });
 
-        // Verify the token
-        // TOTP.verify(token: string, options?: Partial<TOTPOptions>)
         const { valid } = await totp.verify(token, { secret: verifySecret });
 
         if (!valid) {
             return NextResponse.json({ success: false, message: 'Invalid 2FA code' }, { status: 401 });
         }
 
-        // If this was a setup verification and it passed, save the secret to the user's record
         if (isSetup) {
-            const { error: updateError } = await supabaseAdmin
-                .from('admin')
-                .update({ two_factor_secret: verifySecret })
-                .ilike('email', email);
-
-            if (updateError) {
-                return NextResponse.json({ success: false, message: 'Failed to save 2FA secret' }, { status: 500 });
-            }
+            await query(
+                `UPDATE admin SET two_factor_secret = $1, two_factor_enabled = true WHERE LOWER(email) = LOWER($2)`,
+                [verifySecret, email]
+            );
         }
 
-        // Return verifySecret so client can store it temporarily if needed (though usually not improved security practice to echo it back, 
-        // but for this flow might be needed if state management is light)
         return NextResponse.json({ success: true, message: 'Verification successful' });
 
     } catch (error: any) {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,13 +14,12 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: false, message: 'Order ID is required' }, { status: 400 });
         }
 
-        const { data, error } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('id', orderId)
-            .maybeSingle();
+        const res = await query(
+            `SELECT * FROM transactions WHERE id::text = $1 OR session_id = $1 OR order_id = $1 LIMIT 1`,
+            [orderId]
+        );
+        const data = res.rows[0];
 
-        if (error) throw error;
         if (!data) {
             return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
         }
@@ -34,7 +33,8 @@ export async function GET(req: Request) {
                 customer_details: data.customer_details,
                 merchant_upi_id: data.merchant_upi_id,
                 created_at: data.created_at,
-                utr: data.utr
+                utr: data.utr,
+                order_id: data.order_id
             }
         });
     } catch (error: any) {

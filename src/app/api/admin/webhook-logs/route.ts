@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
@@ -12,28 +12,27 @@ export async function GET(req: Request) {
         }
 
         const url = new URL(req.url);
-        const limit = parseInt(url.searchParams.get('limit') || '100');
+        const limit = Math.min(parseInt(url.searchParams.get('limit') || '100'), 500);
         const isOtp = url.searchParams.get('is_otp') === 'true';
 
-        let query = supabaseAdmin
-            .from('webhook_logs')
-            .select('*', { count: 'exact' })
-            .order('created_at', { ascending: false })
-            .limit(limit);
+        let sql = `SELECT * FROM webhook_logs`;
+        const params: any[] = [];
 
         if (isOtp) {
-            query = query.eq('is_otp', true);
+            sql += ` WHERE is_otp = true`;
         }
 
-        const { data, error, count } = await query;
+        sql += ` ORDER BY created_at DESC LIMIT $${params.length + 1}`;
+        params.push(limit);
 
-        if (error) throw error;
+        const res = await query(sql, params);
 
         return NextResponse.json({
             success: true,
-            data
+            data: res.rows
         });
     } catch (error: any) {
+        console.error('Error fetching webhook logs:', error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import axios from 'axios';
-import { supabase } from '@/lib/supabase';
 import { usePathname } from 'next/navigation';
 
 // Import new components and types
@@ -171,32 +170,20 @@ const AdminDashboardContent: React.FC = () => {
         // Trigger lazy cleanup of abandoned sessions
         axios.post('/api/admin/expire-sessions').catch(err => console.warn('Background cleanup failed:', err));
 
-        // Real-time subscription
-        const subscription = supabase
-            .channel('transactions_channel')
-            .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'transactions' },
-                (payload: any) => {
-                    console.log('Real-time change:', payload);
-                    const current = latestRef.current;
-                    if (current.isDashboard) {
-                        current.fetchDashboardData();
-                    } else if (current.isTransactions) {
-                        current.fetchTransactions();
-                    } else if (current.isUsers) {
-                        current.fetchUsers();
-                    }
-                }
-            )
-            .subscribe((status: string) => {
-                if (status === 'SUBSCRIBED') {
-                    console.log('Subscribed to real-time updates');
-                }
-            });
+        // Periodic background refresh every 10s
+        const pollInterval = setInterval(() => {
+            const current = latestRef.current;
+            if (current.isDashboard) {
+                current.fetchDashboardData();
+            } else if (current.isTransactions) {
+                current.fetchTransactions();
+            } else if (current.isUsers) {
+                current.fetchUsers();
+            }
+        }, 10000);
 
         return () => {
-            supabase.removeChannel(subscription);
+            clearInterval(pollInterval);
         };
     }, []);
 

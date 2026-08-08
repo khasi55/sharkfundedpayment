@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import nodemailer from 'nodemailer';
-import { cookies } from 'next/headers';
-import crypto from 'crypto';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
-// Email transporter
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
@@ -26,27 +23,17 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { action } = body;
+        const targetEmail = user.email || 'khasireddy3@gmail.com';
 
-        // Target Email
-        const targetEmail = 'khasireddy3@gmail.com';
-
-        // Generate OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-        // Save OTP
-        const { error } = await supabaseAdmin
-            .from('action_otps')
-            .insert({
-                email: targetEmail,
-                otp,
-                expires_at: expiresAt.toISOString()
-            });
+        // Save OTP to PostgreSQL action_otps table
+        await query(
+            `INSERT INTO action_otps (email, otp, expires_at) VALUES ($1, $2, $3)`,
+            [targetEmail, otp, expiresAt.toISOString()]
+        );
 
-        if (error) throw error;
-
-        // Check for mock/dev environment or missing SMTP config
         const isMockSmtp = !process.env.SMTP_HOST || process.env.SMTP_HOST.includes('example.com');
 
         if (isMockSmtp) {
@@ -62,7 +49,6 @@ export async function POST(req: Request) {
             });
         }
 
-        // Send Email
         await transporter.sendMail({
             from: process.env.SMTP_FROM || '"Shark Funded" <no-reply@sharkfunded.com>',
             to: targetEmail,
@@ -81,8 +67,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: true, message: `OTP sent to ${targetEmail}` });
 
     } catch (error: any) {
-        console.error('Error sending OTP detailed:', JSON.stringify(error, null, 2));
-        console.error('Error sending OTP raw:', error);
+        console.error('Error sending OTP:', error);
         return NextResponse.json({
             success: false,
             message: error.message || 'Internal server error',

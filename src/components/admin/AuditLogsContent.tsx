@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { format } from 'date-fns';
 import { Loader2, Search, ArrowLeft, ArrowRight } from 'lucide-react';
 

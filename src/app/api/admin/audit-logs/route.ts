@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import { cookies } from 'next/headers';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
@@ -17,25 +16,26 @@ export async function GET(req: Request) {
         const limit = parseInt(url.searchParams.get('limit') || '50');
         const offset = (page - 1) * limit;
 
-        const { data, count, error } = await supabaseAdmin
-            .from('admin_audit_logs')
-            .select('*', { count: 'exact' })
-            .order('created_at', { ascending: false })
-            .range(offset, offset + limit - 1);
+        const countRes = await query(`SELECT COUNT(*) FROM audit_logs`);
+        const total = parseInt(countRes.rows[0]?.count || '0');
 
-        if (error) throw error;
+        const dataRes = await query(
+            `SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+            [limit, offset]
+        );
 
         return NextResponse.json({
             success: true,
-            data,
+            data: dataRes.rows,
             pagination: {
                 page,
                 limit,
-                total: count,
-                totalPages: Math.ceil((count || 0) / limit)
+                total,
+                totalPages: Math.ceil(total / limit)
             }
         });
     } catch (error: any) {
+        console.error('Error fetching audit logs:', error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 interface RateLimitResult {
     success: boolean;
@@ -14,25 +14,15 @@ export async function checkRateLimit(ip: string, action: string, limit: number, 
 
     try {
         // 1. Get current usage
-        const { data: usage, error } = await supabase
-            .from('rate_limits')
-            .select('*')
-            .eq('key', key)
-            .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-            console.error('Rate limit fetch error:', error);
-            // Fail open (allow request) if DB error to prevent blocking legit users during outage
-            return { success: true, limit, remaining: 1, reset: 0 };
-        }
+        const result = await query('SELECT key, count, last_request FROM rate_limits WHERE key = $1 LIMIT 1', [key]);
+        const usage = result.rows[0];
 
         // 2. If no record, create one
         if (!usage) {
-            const { error: insertError } = await supabase
-                .from('rate_limits')
-                .insert([{ key, count: 1, last_request: now.toISOString() }]);
-
-            if (insertError) console.error('Rate limit insert error:', insertError);
+            await query(
+                'INSERT INTO rate_limits (key, count, last_request) VALUES ($1, $2, $3) ON CONFLICT (key) DO UPDATE SET count = EXCLUDED.count, last_request = EXCLUDED.last_request',
+                [key, 1, now.toISOString()]
+            );
 
             return { success: true, limit, remaining: limit - 1, reset: now.getTime() + windowSeconds * 1000 };
         }
@@ -41,10 +31,10 @@ export async function checkRateLimit(ip: string, action: string, limit: number, 
         const lastRequest = new Date(usage.last_request);
         if (lastRequest < windowStart) {
             // Reset window
-            await supabase
-                .from('rate_limits')
-                .update({ count: 1, last_request: now.toISOString() })
-                .eq('key', key);
+            await query(
+                'UPDATE rate_limits SET count = 1, last_request = $1 WHERE key = $2',
+                [now.toISOString(), key]
+            );
 
             return { success: true, limit, remaining: limit - 1, reset: now.getTime() + windowSeconds * 1000 };
         }
@@ -54,10 +44,10 @@ export async function checkRateLimit(ip: string, action: string, limit: number, 
             return { success: false, limit, remaining: 0, reset: lastRequest.getTime() + windowSeconds * 1000 };
         }
 
-        await supabase
-            .from('rate_limits')
-            .update({ count: usage.count + 1, last_request: now.toISOString() })
-            .eq('key', key);
+        await query(
+            'UPDATE rate_limits SET count = count + 1, last_request = $1 WHERE key = $2',
+            [now.toISOString(), key]
+        );
 
         return { success: true, limit, remaining: limit - (usage.count + 1), reset: lastRequest.getTime() + windowSeconds * 1000 };
 

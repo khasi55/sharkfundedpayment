@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
@@ -29,15 +29,13 @@ export async function POST(request: Request) {
         }
 
         // UTR Detection Logic: Look for RRN or UTR prefix first, otherwise fallback to exactly 12 digits
-        // Prioritize RRN#123456789012 or UTR: 123456789012
         const explicitUtrMatch = text.match(/(?:RRN|UTR)[#\s:-]*(\d{12})\b/i);
         const fallbackUtrMatch = text.match(/\b\d{12}\b/);
-        
+
         let utrMatch = explicitUtrMatch ? [explicitUtrMatch[1]] : fallbackUtrMatch;
         const amountMatch = text.match(/(?:Rs\.?|INR|₹)\s*([\d,]+(?:\.\d{2})?)/i);
 
         // Refined OTP Detection: Look for exactly 6 digits
-        // We exclude numbers that follow A/c (account) or Bal (balance) or currency symbols
         const otpMatch = text.match(/(?<!(?:Rs\.?|INR|₹|A\/c|Bal(?:ance)?|No\.?)\s*)\b(\d{6})\b/i);
         const isOtp = !!otpMatch && !utrMatch;
 
@@ -46,7 +44,6 @@ export async function POST(request: Request) {
 
         if (isOtp && otpMatch) {
             otpCode = otpMatch[1];
-            // Try to extract name if it follows patterns like "From [Name]:" or "[Name] OTP:"
             const nameMatch = text.match(/(?:From|Sender|Name):\s*([^,.\n:]+)/i) ||
                 text.match(/^([^,.\n:]+)\s*(?:OTP|is your)/i) ||
                 text.match(/([a-z0-9]+)\s+OTP/i);
@@ -61,24 +58,12 @@ export async function POST(request: Request) {
 
             console.log(`Processed Webhook: ${isOtp ? 'OTP' : 'Payment'}, UTR=${utr}, Amount=${amount}, OTP=${otpCode}, From=${from}`);
 
-            // Persist to Supabase
-            const { error } = await supabase
-                .from('webhook_logs')
-                .insert([{
-                    utr,
-                    amount,
-                    sender: from,
-                    raw_text: text,
-                    payload: body,
-                    is_otp: isOtp,
-                    otp_code: otpCode,
-                    otp_name: otpName
-                }]);
-
-            if (error) {
-                console.error('Error saving webhook to Supabase:', error);
-                return NextResponse.json({ success: true, message: 'Processed but db error' });
-            }
+            // Persist to PostgreSQL database in webhook_logs table
+            await query(
+                `INSERT INTO webhook_logs (utr, amount, sender, raw_text, payload, is_otp, otp_code, otp_name)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+                [utr, amount, from, text, JSON.stringify(body), isOtp, otpCode, otpName]
+            );
 
             return NextResponse.json({ success: true, message: isOtp ? 'OTP logged' : 'Payment logged' });
         }

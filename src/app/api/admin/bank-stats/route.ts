@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export async function POST(request: Request) {
@@ -9,25 +9,19 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
 
-        // Only fetch verified/confirmed transactions
-        const { data: transactions, error } = await supabase
-            .from('transactions')
-            .select('amount, merchant_upi_id, status')
-            .eq('status', 'verified');
-
-        if (error) throw error;
+        const res = await query(
+            `SELECT amount, merchant_upi_id, status FROM transactions WHERE status = 'verified'`
+        );
 
         const stats: Record<string, { totalAmount: number; count: number }> = {};
 
-        transactions.forEach((txn: any) => {
-            // Normalize UPI ID (handle nulls)
+        res.rows.forEach((txn: any) => {
             const upiId = txn.merchant_upi_id || 'Unknown';
 
             if (!stats[upiId]) {
                 stats[upiId] = { totalAmount: 0, count: 0 };
             }
 
-            // Count only verified/confirmed transactions
             stats[upiId].count += 1;
             stats[upiId].totalAmount += Number(txn.amount);
         });

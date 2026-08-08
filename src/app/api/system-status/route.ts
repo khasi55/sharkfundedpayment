@@ -1,52 +1,32 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 export async function GET() {
     try {
         const start = Date.now();
 
         // 1. Check Database Connection & Latency
-        const { data: dbTest, error: dbError } = await supabase.from('transactions').select('count').limit(1).single();
+        await query('SELECT 1');
         const dbLatency = Date.now() - start;
 
-        if (dbError) {
-            throw new Error(`Database Error: ${dbError.message}`);
-        }
-
-        // 2. Check Last Webhook Activity (to see if we are receiving payments)
-        const { data: lastWebhook, error: webhookError } = await supabase
-            .from('webhook_logs')
-            .select('created_at')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+        // 2. Check Last Webhook Activity
+        const lastWebhookRes = await query(`SELECT created_at FROM webhook_logs ORDER BY created_at DESC LIMIT 1`);
+        const lastWebhook = lastWebhookRes.rows[0];
 
         // 3. Check Last Transaction
-        const { data: lastTxn, error: txnError } = await supabase
-            .from('transactions')
-            .select('created_at')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+        const lastTxnRes = await query(`SELECT created_at FROM transactions ORDER BY created_at DESC LIMIT 1`);
+        const lastTxn = lastTxnRes.rows[0];
 
         // 4. Check Last SMS (OTP Webhook)
-        const { data: lastSms, error: smsError } = await supabase
-            .from('webhook_logs')
-            .select('created_at')
-            .eq('is_otp', true)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const lastSmsRes = await query(`SELECT created_at FROM webhook_logs WHERE is_otp = true ORDER BY created_at DESC LIMIT 1`);
+        const lastSms = lastSmsRes.rows[0];
 
         // 5. Calculate Success Rate (Last 50 transactions)
-        const { data: recentTxns } = await supabase
-            .from('transactions')
-            .select('status')
-            .order('created_at', { ascending: false })
-            .limit(50);
+        const recentTxnsRes = await query(`SELECT status FROM transactions ORDER BY created_at DESC LIMIT 50`);
+        const recentTxns = recentTxnsRes.rows;
 
-        const successCount = recentTxns?.filter(t => t.status === 'verified').length || 0;
-        const totalCount = recentTxns?.length || 1;
+        const successCount = recentTxns.filter(t => t.status === 'verified').length;
+        const totalCount = recentTxns.length || 1;
         const successRate = totalCount > 0 ? ((successCount / totalCount) * 100).toFixed(1) : '0.0';
 
         return NextResponse.json({

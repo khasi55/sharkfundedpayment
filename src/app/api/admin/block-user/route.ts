@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export async function GET(request: Request) {
@@ -9,14 +9,9 @@ export async function GET(request: Request) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data, error } = await supabase
-            .from('blocked_users')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const res = await query(`SELECT * FROM blocked_users ORDER BY created_at DESC`);
 
-        if (error) throw error;
-
-        return NextResponse.json({ success: true, blockedUsers: data });
+        return NextResponse.json({ success: true, blockedUsers: res.rows });
     } catch (error: any) {
         console.error('Error fetching blocked users:', error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
@@ -37,11 +32,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Email is required' }, { status: 400 });
         }
 
-        const { error } = await supabase
-            .from('blocked_users')
-            .insert([{ email, reason }]);
-
-        if (error) throw error;
+        await query(
+            `INSERT INTO blocked_users (email, reason) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET reason = EXCLUDED.reason`,
+            [email, reason || null]
+        );
 
         return NextResponse.json({ success: true, message: 'User blocked successfully' });
     } catch (error: any) {
@@ -64,12 +58,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ success: false, message: 'Email is required' }, { status: 400 });
         }
 
-        const { error } = await supabase
-            .from('blocked_users')
-            .delete()
-            .eq('email', email);
-
-        if (error) throw error;
+        await query(`DELETE FROM blocked_users WHERE LOWER(email) = LOWER($1)`, [email]);
 
         return NextResponse.json({ success: true, message: 'User unblocked successfully' });
 

@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { supabaseAdmin } from './supabase';
+import { query } from './db';
 
 export async function getAdminUser() {
     try {
@@ -23,7 +23,6 @@ export async function getAdminUser() {
             }
         } else if (rawValue.includes('.') && rawValue.split('.').length === 3) {
             try {
-                // It is a JWT token. Decode the payload (index 1)
                 const payloadPart = rawValue.split('.')[1];
                 const decodedPayload = Buffer.from(payloadPart, 'base64').toString('utf8');
                 const jwtData = JSON.parse(decodedPayload);
@@ -44,22 +43,17 @@ export async function getAdminUser() {
 
         console.log('[adminAuth] Attempting admin lookup for email:', userData.email);
 
-        const { data: admin, error } = await supabaseAdmin
-            .from('admin')
-            .select('id, email, name, role, permissions')
-            .ilike('email', userData.email)
-            .single();
+        const result = await query(
+            'SELECT id, email, name, role, permissions FROM admin WHERE LOWER(email) = LOWER($1) LIMIT 1',
+            [userData.email]
+        );
 
-        if (error) {
-            console.error('[adminAuth] Database error looking up admin:', error.message || error);
-            return null;
-        }
-
-        if (!admin) {
+        if (result.rows.length === 0) {
             console.warn(`[adminAuth] No admin user found in database matching email: ${userData.email}`);
             return null;
         }
 
+        const admin = result.rows[0];
         console.log('[adminAuth] Successfully authenticated admin:', admin.email);
         return admin;
     } catch (error) {

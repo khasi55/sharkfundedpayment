@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
@@ -12,21 +12,19 @@ export async function GET(req: Request) {
         }
 
         const url = new URL(req.url);
-        const limit = parseInt(url.searchParams.get('limit') || '500');
+        const limit = Math.min(parseInt(url.searchParams.get('limit') || '500'), 1000);
 
-        const { data, error } = await supabaseAdmin
-            .from('api_logs')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(limit);
-
-        if (error) throw error;
+        const res = await query(
+            `SELECT * FROM api_logs ORDER BY created_at DESC LIMIT $1`,
+            [limit]
+        );
 
         return NextResponse.json({
             success: true,
-            data
+            data: res.rows
         });
     } catch (error: any) {
+        console.error('Error fetching api logs:', error);
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
 }

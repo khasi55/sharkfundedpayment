@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { supabase } from '@/lib/supabase';
 import { getUpiConfigForTransaction, UPI_CONFIGS } from '@/config/upiConfig';
+import { supabase } from '@/lib/supabase';
 
 
 import { Check, ShieldCheck, Lock, CreditCard, Shield, Search, ArrowLeft } from 'lucide-react';
@@ -350,23 +350,15 @@ export default function PaymentPageContent() {
     const handleCancelPayment = async (reason: string) => {
         try {
             if (sessionId) {
-                await supabase
-                    .from('transactions')
-                    .update({
-                        status: 'cancelled',
-                        customer_details: {
-                            name: state.name,
-                            email: state.email,
-                            failure_reason: reason,
-                            cancelled_at: new Date().toISOString()
-                        }
-                    })
-                    .or(`id.eq.${sessionId},session_id.eq.${sessionId}`);
+                await axios.post('/api/admin/update-status', {
+                    transactionId: sessionId,
+                    status: 'cancelled'
+                });
             }
 
             setState(prev => ({
                 ...prev,
-                step: 'cancelled', // Explicitly cancelled
+                step: 'cancelled',
                 error: `Payment cancelled by user. Reason: ${reason}`
             }));
 
@@ -391,154 +383,50 @@ export default function PaymentPageContent() {
         if (!file) return;
 
         setUploading(true);
-        setUploading(true);
         try {
-            let insertedData;
+            const formData = new FormData();
+            formData.append('file', file);
+            if (sessionId) formData.append('sessionId', sessionId);
+            if (state.utr) formData.append('utr', state.utr);
+            if (state.amount) formData.append('amount', state.amount);
+            if (state.name) formData.append('name', state.name);
+            if (state.email) formData.append('email', state.email);
 
-            // 1. Try Update Existing
-            if (sessionId) {
-                const { data: updatedData } = await supabase
-                    .from('transactions')
-                    .update({
-                        utr: state.utr || `MANUAL-${Date.now()}`,
-                        amount: state.amount,
-                        status: 'pending_manual_verification',
-                        customer_details: { name: state.name, email: state.email, reference_id: referenceId, callback_url: callbackUrl, success_url: successUrl, failed_url: failedUrl }
-                    })
-                    .or(`id.eq.${sessionId},session_id.eq.${sessionId}`)
-                    .select()
-                    .maybeSingle(); // Use maybeSingle to avoid 406 if no rows
+            const res = await axios.post('/api/upload-proof', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
 
-                if (updatedData) insertedData = updatedData;
+            if (res.data.success) {
+                if (res.data.data?.order_id) {
+                    setOfficialOrderId(res.data.data.order_id);
+                }
+                setState(prev => ({ ...prev, step: 'review_pending', screenshot_url: res.data.screenshot_url }));
+            } else {
+                throw new Error(res.data.message);
             }
-
-            // 2. Insert if update not successful
-            if (!insertedData) {
-                const { data, error: insertError } = await supabase
-                    .from('transactions')
-                    .insert({
-                        utr: state.utr || `MANUAL-${Date.now()}`, // Fallback if no UTR entered
-                        amount: state.amount,
-                        session_id: sessionId, // Store UUID in session_id
-                        status: 'pending_manual_verification',
-                        customer_details: { name: state.name, email: state.email, reference_id: referenceId, callback_url: callbackUrl, success_url: successUrl, failed_url: failedUrl }
-                        // screenshot_url is initially null
-                    })
-                    .select()
-                    .single();
-
-                if (insertError) throw insertError;
-                insertedData = data;
-            }
-
-            // 2. Determine filename using Order ID (preferred) or Session ID
-            const fileExt = file.name.split('.').pop();
-            // If order_id exists (e.g. SF-2025-1001), use it. Otherwise fallback to sessionId.
-            const baseName = insertedData?.order_id || sessionId;
-            const fileName = `${baseName}.${fileExt}`;
-            const filePath = `${fileName}`;
-
-            // 3. Upload the file
-            const { error: uploadError } = await supabase.storage
-                .from('payment_proofs')
-                .upload(filePath, file, {
-                    upsert: true // Overwrite if exists
-                });
-
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabase.storage
-                .from('payment_proofs')
-                .getPublicUrl(filePath);
-
-            // 4. Update the transaction with the screenshot URL
-            const { error: updateError } = await supabase
-                .from('transactions')
-                .update({ screenshot_url: publicUrl })
-                .eq('id', insertedData.id);
-
-            if (updateError) throw updateError;
-
-            // Update local state
-            if (insertedData && insertedData.order_id) {
-                setOfficialOrderId(insertedData.order_id);
-            }
-
-            setState(prev => ({ ...prev, step: 'review_pending', screenshot_url: publicUrl }));
         } catch (error: any) {
             console.error('Error uploading:', error);
-            if (error.code === '23505' || error.message?.includes('duplicate key')) {
-                setState(prev => ({ ...prev, error: 'This UTR has already been submitted. Please check your status.' }));
-            } else {
-                setState(prev => ({ ...prev, error: error.message || 'Error uploading screenshot' }));
-            }
+            setState(prev => ({ ...prev, error: error.response?.data?.message || error.message || 'Error uploading screenshot' }));
         } finally {
             setUploading(false);
         }
     };
 
-    // Listen for status updates (e.g. Admin approval)
-    useEffect(() => {
-        if (!sessionId) return;
-
-
-
-        const subscription = supabase
-            .channel(`transaction_${sessionId}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'transactions',
-                    filter: `id=eq.${sessionId}` // Listen specifically for this PK ID
-                },
-                (payload: any) => {
-
-                    const newStatus = payload.new.status;
-                    const newOrderId = payload.new.order_id;
-
-                    if (newStatus === 'verified') {
-                        if (newOrderId) {
-                            setOfficialOrderId(newOrderId);
-                        }
-                        setState(prev => ({ ...prev, step: 'verified' }));
-
-                        // Trigger email receipt
-                        // axios.post('/api/send-receipt', { ... }) - Handled by verify-payment API
-                        console.log('Payment verified, receipt handled by API');
-
-                    } else if (newStatus === 'rejected') {
-                        setState(prev => ({ ...prev, step: 'failed', error: 'Payment verification rejected by admin.' }));
-                    }
-                }
-            )
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(subscription);
-        };
-    }, [sessionId]);
-
-    // [NEW] Polling fallback for 'review_pending' state
-    // In case Realtime is flaky or behind a firewall, we poll every 10 seconds
+    // Polling for 'review_pending' state
     useEffect(() => {
         let pollTimer: NodeJS.Timeout;
 
-        if (state.step === 'review_pending' && sessionId) {
+        if ((state.step === 'review_pending' || state.step === 'payment') && sessionId) {
             const pollFn = async () => {
                 try {
-                    const { data, error } = await supabase
-                        .from('transactions')
-                        .select('status, order_id')
-                        .or(`id.eq.${sessionId},session_id.eq.${sessionId}`) // Query by ID or Session ID
-                        .single();
+                    const res = await fetch(`/api/checkout-details?orderId=${sessionId}`);
+                    const result = await res.json();
 
-                    if (data) {
-                        if (data.status === 'verified') {
-                            if (data.order_id) setOfficialOrderId(data.order_id);
+                    if (result.success && result.data) {
+                        if (result.data.status === 'verified') {
+                            if (result.data.order_id) setOfficialOrderId(result.data.order_id);
                             setState(prev => ({ ...prev, step: 'verified' }));
-                        } else if (data.status === 'rejected') {
+                        } else if (result.data.status === 'rejected') {
                             setState(prev => ({ ...prev, step: 'failed', error: 'Payment verification rejected by admin.' }));
                         }
                     }
@@ -547,8 +435,6 @@ export default function PaymentPageContent() {
                 }
             };
 
-            // Poll immediately then every 10s
-            pollFn();
             pollTimer = setInterval(pollFn, 10000);
         }
 
@@ -558,33 +444,22 @@ export default function PaymentPageContent() {
     }, [state.step, sessionId]);
 
     const checkStatus = async () => {
-        // If we have an official order ID, check by that.
-        // If not, check by session_id or UTR.
-        if (!officialOrderId && !sessionId && !state.utr) return;
+        const targetId = officialOrderId || sessionId;
+        if (!targetId) return;
 
         try {
-            let query = supabase.from('transactions').select('status, order_id');
+            const res = await fetch(`/api/checkout-details?orderId=${targetId}`);
+            const result = await res.json();
 
-            if (officialOrderId) {
-                query = query.eq('order_id', officialOrderId);
-            } else if (sessionId) {
-                query = query.eq('session_id', sessionId);
-            } else {
-                query = query.eq('utr', state.utr);
-            }
-
-            const { data, error } = await query.maybeSingle();
-
-            if (error) throw error;
-
-            if (!data) {
+            if (!result.success || !result.data) {
                 alert('Transaction not found. Please ensure you have submitted the details.');
                 return;
             }
 
+            const data = result.data;
+
             if (data.status === 'verified') {
                 if (data.order_id) setOfficialOrderId(data.order_id);
-                // Also update the state orderId if needed so it propagates immediately
                 setState(prev => ({ ...prev, step: 'verified' }));
             } else if (data.status === 'rejected') {
                 setState(prev => ({ ...prev, step: 'failed', error: 'Payment verification rejected by admin.' }));

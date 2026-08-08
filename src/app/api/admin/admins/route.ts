@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { getAdminUser } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
@@ -11,16 +11,11 @@ export async function GET(req: Request) {
             return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data, error } = await supabaseAdmin
-            .from('admin')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) throw error;
+        const res = await query(`SELECT id, email, name, role, permissions, created_at FROM admin ORDER BY created_at DESC`);
 
         return NextResponse.json({
             success: true,
-            data
+            data: res.rows
         });
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
@@ -39,17 +34,11 @@ export async function DELETE(req: Request) {
             return NextResponse.json({ success: false, message: 'ID is required' }, { status: 400 });
         }
 
-        // Prevent deleting yourself
         if (id === user.id) {
             return NextResponse.json({ success: false, message: 'Cannot delete yourself' }, { status: 400 });
         }
 
-        const { error } = await supabaseAdmin
-            .from('admin')
-            .delete()
-            .eq('id', id);
-
-        if (error) throw error;
+        await query(`DELETE FROM admin WHERE id = $1`, [id]);
 
         return NextResponse.json({ success: true, message: 'Admin deleted successfully' });
     } catch (error: any) {
@@ -67,15 +56,13 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { name, email, password, role, permissions } = body;
 
-        const { data, error } = await supabaseAdmin
-            .from('admin')
-            .insert([{ name, email, password, role: role || 'subadmin', permissions }])
-            .select()
-            .single();
+        const res = await query(
+            `INSERT INTO admin (name, email, password, role, permissions)
+             VALUES ($1, $2, $3, $4, $5) RETURNING id, email, name, role, permissions, created_at`,
+            [name, email, password, role || 'subadmin', JSON.stringify(permissions || [])]
+        );
 
-        if (error) throw error;
-
-        return NextResponse.json({ success: true, data });
+        return NextResponse.json({ success: true, data: res.rows[0] });
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }
@@ -89,22 +76,26 @@ export async function PATCH(req: Request) {
         }
 
         const body = await req.json();
-        const { id, ...updateData } = body;
+        const { id, name, email, password, role, permissions } = body;
 
         if (!id) {
             return NextResponse.json({ success: false, message: 'ID is required' }, { status: 400 });
         }
 
-        const { data, error } = await supabaseAdmin
-            .from('admin')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
+        let updateQuery = `UPDATE admin SET name = COALESCE($1, name), email = COALESCE($2, email), role = COALESCE($3, role), permissions = COALESCE($4, permissions)`;
+        const params: any[] = [name || null, email || null, role || null, permissions ? JSON.stringify(permissions) : null];
 
-        if (error) throw error;
+        if (password) {
+            updateQuery += `, password = $5 WHERE id = $6 RETURNING id, email, name, role, permissions, created_at`;
+            params.push(password, id);
+        } else {
+            updateQuery += ` WHERE id = $5 RETURNING id, email, name, role, permissions, created_at`;
+            params.push(id);
+        }
 
-        return NextResponse.json({ success: true, data });
+        const res = await query(updateQuery, params);
+
+        return NextResponse.json({ success: true, data: res.rows[0] });
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error.message }, { status: 500 });
     }

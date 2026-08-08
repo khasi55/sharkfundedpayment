@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 import { sendPaymentSuccessEmail } from '@/utils/email';
 import { sendMerchantWebhook } from '@/utils/webhooks';
 import { z } from 'zod';
 import { checkRateLimit } from '@/lib/rateLimit';
-
 import { UPI_CONFIGS } from '@/config/upiConfig';
 
 const VerifyPaymentSchema = z.object({
@@ -22,18 +21,22 @@ export async function POST(request: Request) {
 
     const logResponse = async (statusCode: number, responseBody: any, metadata: any = {}) => {
         try {
-            await supabase.from('api_logs').insert({
-                endpoint: 'verify-payment',
-                ip_address: ip,
-                request_payload: body,
-                response_payload: responseBody,
-                status_code: statusCode,
-                metadata: {
-                    ...metadata,
-                    utr: body?.utr || metadata?.utr,
-                    order_id: body?.orderId || metadata?.order_id
-                }
-            });
+            await query(
+                `INSERT INTO api_logs (endpoint, ip_address, request_payload, response_payload, status_code, metadata)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [
+                    'verify-payment',
+                    ip,
+                    JSON.stringify(body),
+                    JSON.stringify(responseBody),
+                    statusCode,
+                    JSON.stringify({
+                        ...metadata,
+                        utr: body?.utr || metadata?.utr,
+                        order_id: body?.orderId || metadata?.order_id
+                    })
+                ]
+            );
         } catch (err) {
             console.error('[Logging Error] Failed to write API log:', err);
         }
@@ -71,14 +74,11 @@ export async function POST(request: Request) {
         const amountStr = String(amount);
 
         // [SECURITY] Check if this UTR has already been successfully verified for another transaction
-        const { data: duplicateVerification } = await supabase
-            .from('transactions')
-            .select('id, order_id')
-            .eq('utr', utr)
-            .eq('status', 'verified')
-            .neq('id', orderId || '')
-            .limit(1)
-            .maybeSingle();
+        const duplicateCheck = await query(
+            `SELECT id, order_id FROM transactions WHERE utr = $1 AND status = 'verified' AND id::text != $2 LIMIT 1`,
+            [utr, orderId || '']
+        );
+        const duplicateVerification = duplicateCheck.rows[0];
 
         if (duplicateVerification) {
             console.warn(`[Security Alert] Reused UTR Attempt. UTR: ${utr}, Current Order: ${orderId}, Existing Order: ${duplicateVerification.id || duplicateVerification.order_id}`);
@@ -92,11 +92,8 @@ export async function POST(request: Request) {
 
         // [SECURITY] Terminal State Guard - Prevent customers from overriding admin decisions or duplicate updates
         if (orderId) {
-            const { data: existingTx } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('id', orderId)
-                .maybeSingle();
+            const existingTxRes = await query(`SELECT * FROM transactions WHERE id::text = $1 OR session_id = $1 LIMIT 1`, [orderId]);
+            const existingTx = existingTxRes.rows[0];
 
             if (existingTx) {
                 if (existingTx.status === 'verified') {
@@ -130,11 +127,8 @@ export async function POST(request: Request) {
             }
         } else {
             // Check by UTR if orderId is missing
-            const { data: existingTx } = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('utr', utr)
-                .maybeSingle();
+            const existingTxRes = await query(`SELECT * FROM transactions WHERE utr = $1 LIMIT 1`, [utr]);
+            const existingTx = existingTxRes.rows[0];
 
             if (existingTx) {
                 if (existingTx.status === 'verified') {
@@ -195,7 +189,7 @@ export async function POST(request: Request) {
                 utr,
                 amount: transaction?.amount || amountStr,
                 status,
-                merchant_upi_id: merchantUpiId, // Pass back to merchant
+                merchant_upi_id: merchantUpiId,
                 timestamp: new Date().toISOString()
             };
 
@@ -206,16 +200,10 @@ export async function POST(request: Request) {
             }
         };
 
-        const { data: foundPayment } = await supabase
-            .from('webhook_logs')
-            .select('*')
-            .eq('utr', utr)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const webhookRes = await query(`SELECT * FROM webhook_logs WHERE utr = $1 ORDER BY created_at DESC LIMIT 1`, [utr]);
+        const foundPayment = webhookRes.rows[0];
 
         if (foundPayment) {
-            // Amount Tolerance Logic
             const paidAmount = Number(foundPayment.amount);
             const requestedAmount = Number(amountStr);
 
@@ -225,74 +213,42 @@ export async function POST(request: Request) {
                 return NextResponse.json(resBody, { status: 400 });
             }
 
-            // Allow overpayment and up to ₹5 underpayment
             if (paidAmount >= (requestedAmount - 5)) {
-
                 let transaction = null;
 
                 if (orderId) {
-                    const { data } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('id', orderId)
-                        .maybeSingle();
-                    transaction = data;
+                    const txRes = await query(`SELECT * FROM transactions WHERE id::text = $1 OR session_id = $1 LIMIT 1`, [orderId]);
+                    transaction = txRes.rows[0];
                 }
 
                 if (!transaction) {
-                    const { data } = await supabase
-                        .from('transactions')
-                        .select('*')
-                        .eq('utr', utr)
-                        .maybeSingle();
-                    transaction = data;
+                    const txRes = await query(`SELECT * FROM transactions WHERE utr = $1 LIMIT 1`, [utr]);
+                    transaction = txRes.rows[0];
                 }
 
-                // Update transaction status to verified, utr, and merchant_upi_id on the server
                 if (transaction) {
-                    const { data: updatedTx, error: updateErr } = await supabase
-                        .from('transactions')
-                        .update({
-                            status: 'verified',
-                            utr: utr,
-                            merchant_upi_id: merchantUpiId || transaction.merchant_upi_id
-                        })
-                        .eq('id', transaction.id)
-                        .select()
-                        .single();
-
-                    if (!updateErr && updatedTx) {
-                        transaction = updatedTx;
-                    } else if (updateErr) {
-                        console.error('[VerifyPayment] Error updating transaction status:', updateErr);
+                    const updateRes = await query(
+                        `UPDATE transactions SET status = 'verified', utr = $1, merchant_upi_id = COALESCE($2, merchant_upi_id) WHERE id = $3 RETURNING *`,
+                        [utr, merchantUpiId || null, transaction.id]
+                    );
+                    if (updateRes.rows.length > 0) {
+                        transaction = updateRes.rows[0];
                     }
                 } else {
-                    // Create transaction on server if it doesn't exist
-                    const { data: insertedTx, error: insertErr } = await supabase
-                        .from('transactions')
-                        .insert({
-                            amount: requestedAmount,
-                            utr: utr,
-                            session_id: orderId || null,
-                            status: 'verified',
-                            customer_details: { name: name || 'Customer', email: email || '' },
-                            merchant_upi_id: merchantUpiId
-                        })
-                        .select()
-                        .single();
-
-                    if (!insertErr && insertedTx) {
-                        transaction = insertedTx;
-                    } else if (insertErr && insertErr.code === '23505') {
-                        // Handle race condition/duplicate key: fetch existing row
-                        const { data: existingData } = await supabase
-                            .from('transactions')
-                            .select()
-                            .eq('utr', utr)
-                            .maybeSingle();
-                        if (existingData) {
-                            transaction = existingData;
-                        }
+                    const insertRes = await query(
+                        `INSERT INTO transactions (amount, utr, session_id, status, customer_details, merchant_upi_id)
+                         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+                        [
+                            requestedAmount,
+                            utr,
+                            orderId || null,
+                            'verified',
+                            JSON.stringify({ name: name || 'Customer', email: email || '' }),
+                            merchantUpiId || null
+                        ]
+                    );
+                    if (insertRes.rows.length > 0) {
+                        transaction = insertRes.rows[0];
                     }
                 }
 
@@ -309,25 +265,19 @@ export async function POST(request: Request) {
             } else {
                 if (orderId) {
                     const failureReason = `Amount mismatch. Received: ${paidAmount}, Expected: ${requestedAmount}`;
-                    const { data: tx } = await supabase
-                        .from('transactions')
-                        .select('customer_details')
-                        .eq('id', orderId)
-                        .single();
+                    const txRes = await query(`SELECT customer_details FROM transactions WHERE id::text = $1 OR session_id = $1 LIMIT 1`, [orderId]);
+                    const tx = txRes.rows[0];
 
                     if (tx) {
-                        await supabase
-                            .from('transactions')
-                            .update({
-                                status: 'failed',
-                                customer_details: {
-                                    ...tx.customer_details,
-                                    failure_reason: failureReason,
-                                    failed_attempt_utr: utr
-                                },
-                                merchant_upi_id: merchantUpiId
-                            })
-                            .eq('id', orderId);
+                        const newDetails = {
+                            ...(tx.customer_details || {}),
+                            failure_reason: failureReason,
+                            failed_attempt_utr: utr
+                        };
+                        await query(
+                            `UPDATE transactions SET status = 'failed', customer_details = $1, merchant_upi_id = $2 WHERE id::text = $3 OR session_id = $3`,
+                            [JSON.stringify(newDetails), merchantUpiId || null, orderId]
+                        );
 
                         await handleWebhookTrigger(
                             { ...tx, amount: paidAmount, order_id: 'N/A' },
@@ -345,10 +295,6 @@ export async function POST(request: Request) {
             }
         }
 
-
-        // [ANTI-HACK] Validate the merchantUpiId against our hardcoded list
-        // If the client sends something else (malicious), we override it with our known good one if possible,
-        // or just reject the VPA update.
         let safeMerchantUpiId = merchantUpiId;
         const isUpiValid = UPI_CONFIGS.some(c => c.vpa === merchantUpiId);
 
@@ -358,34 +304,26 @@ export async function POST(request: Request) {
         }
 
         if (orderId) {
-            // Fetch current details to clear any previous failure reason
-            const { data: tx } = await supabase.from('transactions').select('customer_details').eq('id', orderId).single();
+            const txRes = await query(`SELECT customer_details FROM transactions WHERE id::text = $1 OR session_id = $1 LIMIT 1`, [orderId]);
+            const tx = txRes.rows[0];
 
             if (tx) {
-                const newDetails = { ...tx.customer_details };
-                // Remove failure flags so Admin Dashboard and Client don't show "Failed" or old reasons
-                if (newDetails.failure_reason) delete newDetails.failure_reason;
-                if (newDetails.failed_attempt_utr) delete newDetails.failed_attempt_utr;
+                const newDetails = { ...(tx.customer_details || {}) };
+                delete newDetails.failure_reason;
+                delete newDetails.failed_attempt_utr;
 
-                await supabase
-                    .from('transactions')
-                    .update({
-                        utr: utr,
-                        status: 'pending_payment',
-                        customer_details: newDetails,
-                        merchant_upi_id: safeMerchantUpiId
-                    })
-                    .eq('id', orderId);
+                await query(
+                    `UPDATE transactions SET utr = $1, status = 'pending_payment', customer_details = $2, merchant_upi_id = $3 WHERE id::text = $4 OR session_id = $4`,
+                    [utr, JSON.stringify(newDetails), safeMerchantUpiId || null, orderId]
+                );
             } else {
-                // Fallback update if read fails (shouldn't happen)
-                await supabase
-                    .from('transactions')
-                    .update({ utr: utr, status: 'pending_payment', merchant_upi_id: safeMerchantUpiId })
-                    .eq('id', orderId);
+                await query(
+                    `UPDATE transactions SET utr = $1, status = 'pending_payment', merchant_upi_id = $2 WHERE id::text = $3 OR session_id = $3`,
+                    [utr, safeMerchantUpiId || null, orderId]
+                );
             }
         }
 
-        // Return false to keep polling
         const resBody = { success: false, message: 'Payment not found yet. Keep polling.' };
         await logResponse(200, resBody, { polling: true });
         return NextResponse.json(resBody);

@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin as supabase } from '@/lib/supabase';
+import { query } from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
         const payload = await request.json();
 
-        // Log the received webhook
-        await supabase.from('api_logs').insert({
-            endpoint: 'webhook-received',
-            request_payload: payload,
-            metadata: { source: 'sharkpaycallbackrespo' }
-        });
+        await query(
+            `INSERT INTO api_logs (endpoint, request_payload, metadata) VALUES ($1, $2, $3)`,
+            ['webhook-received', JSON.stringify(payload), JSON.stringify({ source: 'sharkpaycallbackrespo' })]
+        );
 
         return NextResponse.json({ success: true, message: 'Webhook received' });
     } catch (error) {
@@ -23,12 +21,10 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const queryParams = Object.fromEntries(searchParams.entries());
 
-        // Log the received GET callback
-        await supabase.from('api_logs').insert({
-            endpoint: 'webhook-received-get',
-            request_payload: queryParams,
-            metadata: { source: 'sharkpaycallbackrespo' }
-        });
+        await query(
+            `INSERT INTO api_logs (endpoint, request_payload, metadata) VALUES ($1, $2, $3)`,
+            ['webhook-received-get', JSON.stringify(queryParams), JSON.stringify({ source: 'sharkpaycallbackrespo' })]
+        );
 
         return NextResponse.json({ success: true, message: 'Callback received' });
     } catch (error) {

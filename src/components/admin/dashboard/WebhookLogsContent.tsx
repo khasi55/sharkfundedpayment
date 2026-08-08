@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import { Search, RefreshCw, MessageSquare } from 'lucide-react';
 import WebhookLogsTable from '@/components/admin/dashboard/webhooks/WebhookLogsTable';
 
