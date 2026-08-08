@@ -79,13 +79,13 @@ const AdminLoginPage: React.FC = () => {
             if (result.requiresSetup) {
                 // User needs to set up 2FA
                 initiate2FASetup(user.email);
-            } else if (result.success === false && result.message === 'Invalid 2FA code') {
+            } else if (result.success === false && (result.message?.includes('Invalid 2FA code') || response.status === 401)) {
                 // User has 2FA, just needs to verify
                 setStep('2fa_verify');
                 setLoading(false);
             } else {
-                // Should not happen if token is dummy
-                setError('Unexpected 2FA state');
+                // Unexpected error response
+                setError(result.message || 'Unexpected 2FA state');
                 setLoading(false);
             }
 
