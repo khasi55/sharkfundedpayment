@@ -10,7 +10,7 @@ let pool: Pool;
 if (connectionString && (connectionString.startsWith('postgres://') || connectionString.startsWith('postgresql://'))) {
     pool = new Pool({
         connectionString,
-        ssl: process.env.NODE_ENV === 'production' || connectionString.includes('sslmode=require')
+        ssl: connectionString.includes('sslmode=require')
             ? { rejectUnauthorized: false }
             : false,
         max: 20,

@@ -6,9 +6,10 @@ import pg from 'pg';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const sql = readFileSync(path.join(__dirname, '..', 'postgres_schema.sql'), 'utf8');
 
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 const pool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionString,
+    ssl: connectionString.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
 });
 
 try {
